@@ -4,6 +4,8 @@
 
 An AI-assisted interview practice and feedback system.
 
+**Live Demo:** [https://47.239.50.129/](https://47.239.50.129/)
+
 **IRS Practice Module · AIS08 FT · Group 9 · Course start: 2026-08-17**
 
 Submission name: `IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI`.
