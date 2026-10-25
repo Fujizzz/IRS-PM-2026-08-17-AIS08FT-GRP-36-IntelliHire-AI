@@ -19,6 +19,11 @@ Variable Index:
 - INTERVIEW_REQUIRE_LOGIN: Development login gate; production configuration enables this explicitly.
 - AI_SECURITY_ENABLED: Strict true/false switch, disabled by default for the current interview flow;
   explicit true restores interview safety review without changing authentication.
+- AI_SECURITY_MAX_SCAN_CHARS: Positive integer bound on a serialized safety-review request.
+- AI_SECURITY_SEMANTIC_TIMEOUT_SECONDS: Positive float controlling the semantic safety deadline.
+- EVALUATION_USE_WORKER: Enables the separate evaluation worker by default.
+- EVALUATION_FINAL_WAIT_SECONDS: Foreground evaluation wait, validated between zero and 60 seconds.
+- QUESTION_PREPARATION_EXECUTION: Explicit thread/celery/disabled question preparation mode.
 - AVATAR_REMOTE_ENABLED: Opt-in same-origin signalling proxy for a remote rendering computer.
 - AVATAR_SIGNALLING_UPSTREAM: Private loopback player connection; never returned to the browser.
 - AUTH_PASSWORD_VALIDATORS: Empty registration complexity rules; Django's standard password hashing
@@ -36,7 +41,7 @@ Variable Index:
 - LANGUAGE_CODE: Default Django locale, set to English for server-generated framework text.
 - REST_FRAMEWORK: JSON rendering/parsing, pagination, session authentication, and API exception
   handling.
-- LOGGING: Console formats and levels for business, completion detection, and security decisions;
+- LOGGING: Console levels for business, model-pool dispatch, completion detection and security;
   SDK content and secrets are excluded.
 - PDF_TASK_EXECUTION: Development defaults to inline; explicit Celery mode uses Redis without
   fallback.
@@ -141,6 +146,7 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "context"}},
     "loggers": {
         "interviews": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "app.providers.free_pool": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "agents.answer_completion": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "agents.completion_gate": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "ai_security": {"handlers": ["console"], "level": "INFO", "propagate": False},

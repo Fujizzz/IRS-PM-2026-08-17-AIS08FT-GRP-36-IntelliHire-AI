@@ -1,0 +1,34 @@
+# Responsibilities: Exclude local secrets, datasets and GPU resources from the Docker build context.
+# Implementation: Filter before any bytes are sent to the engine; Dockerfile copies application dirs.
+# Related Modules: deploy/standalone/Dockerfile; root .gitignore protects local deployment state.
+# Declaration Index: None.
+# Variable Index: Patterns below exclude runtime state and optional resource-heavy components.
+.git
+**/.git
+**/.env
+**/.env.*
+**/server_info.txt
+**/.deploy
+**/.venv
+**/.runtime
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/*.sqlite3*
+**/*.log
+**/.capacity
+**/test-results
+**/.pytest_cache
+**/.ruff_cache
+**/dist
+DigitalHuman
+training
+security_evaluation
+docs
+output
+rag/data/raw
+rag/data/clean
+rag/data/chunks
+rag/data/embeddings
+rag/data/models
+rag/data/reports

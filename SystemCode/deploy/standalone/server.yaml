@@ -1,0 +1,9 @@
+# Responsibilities: Publish standard HTTPS only for an explicit server deployment.
+# Implementation: Extend the web namespace where Caddy listens; keep ASGI port 8765 unpublished.
+# Related Modules: compose.yaml; generated Caddyfile obtains and renews the domain certificate.
+# Declaration Index: None.
+# Variable Index: services.web.ports adds public TLS; HTTP 80 is supplied by the base file.
+services:
+  web:
+    ports:
+      - "0.0.0.0:443:443"

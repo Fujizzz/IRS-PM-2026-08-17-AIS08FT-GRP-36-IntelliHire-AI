@@ -3,7 +3,9 @@
 # Related Modules: SystemCode/.gitattributes controls source-archive and LFS behavior.
 # Declaration Index: None.
 # Variable Index: SystemCode/backend, SystemCode/DigitalHuman and SystemCode/rag patterns cover
-# application databases, generated Unreal assets, and local corpus/model artifacts respectively.
+# application databases, generated Unreal assets, and local corpus/model artifacts respectively;
+# .deploy excludes private standalone configuration, database backups and deployment locks.
+.deploy/
 .env
 .env.*
 !.env.example

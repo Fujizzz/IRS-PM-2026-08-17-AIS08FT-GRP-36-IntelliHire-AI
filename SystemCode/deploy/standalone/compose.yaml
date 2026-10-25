@@ -1,0 +1,111 @@
+# Responsibilities: Run one end-user installation with persistent PostgreSQL and private workers.
+# Implementation: Only the shared proxy/ASGI namespace publishes HTTP; DB/Redis have no host ports.
+# Related Modules: deploy.py owns build/preflight/backup/migrations; server.yaml adds public HTTPS.
+# Declaration Index: None.
+# Variable Index: STATE_DIR selects private config; HTTP_BIND/HTTP_PORT select local/public HTTP;
+# app contains common non-root settings; capacity, database and caddy_data are persistent volumes.
+x-app: &app
+  image: ${COMPOSE_PROJECT_NAME}-app:local
+  env_file:
+    - path: ${STATE_DIR:?Run deploy.py}/app.env
+      format: raw
+  init: true
+  restart: "no"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ["/tmp:rw,nosuid,nodev,mode=1777"]
+  volumes:
+    - capacity:/var/lib/intellihire
+  stop_grace_period: 150s
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+
+services:
+  db:
+    image: postgres:14.19-bookworm
+    env_file:
+      - path: ${STATE_DIR}/db.env
+        format: raw
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./init-database.sh:/docker-entrypoint-initdb.d/10-application.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d intellihire"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  redis:
+    image: redis:7.4.2-bookworm
+    # The official entrypoint starts as root and reads the root-private bind mount before dropping
+    # privileges only when invoking redis-server; use a root-owned config copied into a private tmpfs.
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - "cp /run/private/redis.conf /tmp/redis.conf; chown redis:redis /tmp/redis.conf; chmod 600 /tmp/redis.conf; exec /usr/local/bin/docker-entrypoint.sh redis-server /tmp/redis.conf"
+    volumes:
+      - ${STATE_DIR}/redis.conf:/run/private/redis.conf:ro
+    tmpfs: ["/tmp:rw,nosuid,nodev,mode=1777"]
+    healthcheck:
+      test: [CMD-SHELL, "REDISCLI_AUTH=$$(sed -n 's/^requirepass //p' /tmp/redis.conf) redis-cli ping | grep -qx PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  web:
+    <<: *app
+    build:
+      context: ../..
+      dockerfile: deploy/standalone/Dockerfile
+    ports:
+      - ${HTTP_BIND:?}:${HTTP_PORT:?}:80
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, ../deploy/standalone/check.py, readiness]
+      interval: 5s
+      timeout: 10s
+      retries: 24
+  worker:
+    <<: *app
+    # Only this PDF worker permits nested user namespaces. It remains non-root with no capabilities;
+    # the existing bubblewrap child installs its own network/filesystem/process/seccomp isolation.
+    # A host forbidding user namespaces fails the real sandbox probe; no privileged fallback exists.
+    security_opt: [no-new-privileges:true, seccomp:unconfined, apparmor:unconfined]
+    command: [celery, -A, "config.celery:app", worker, --loglevel=WARNING, --concurrency=2]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  evaluation:
+    <<: *app
+    command: [python, manage.py, evaluation_worker]
+    depends_on:
+      db: {condition: service_healthy}
+  proxy:
+    image: caddy:2.10.2
+    # Loopback sharing preserves the application's existing peer and Origin validation unchanged.
+    network_mode: service:web
+    depends_on:
+      web: {condition: service_healthy}
+    volumes:
+      - ${STATE_DIR}/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+
+volumes:
+  database:
+  capacity:
+  caddy_data:
+  caddy_config:

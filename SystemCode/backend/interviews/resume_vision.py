@@ -1,11 +1,12 @@
 """Responsibilities: Implement independent asynchronous multimodal model adapter for resume cleanup
 Agent.
 Implementation: Read dedicated configuration, pass single-page PNG and numbered source lines in Chat
-Completions JSON format, strictly validate structure.
-Related Modules: agents.resume_cleanup defines port; resume_api manages lifecycle of this adapter.
+Completions JSON format, strictly validate structure. Explicit free_pool mode restricts rotation to
+approved vision-capable models; text-only models cannot enter the PDF cleanup route.
+Related Modules: agents.resume_cleanup defines the port; resume_api manages adapter lifecycle;
+app.providers.free_pool selects approved vision candidates using the shared private manifest/state.
 Declaration Index:
-- ResumeVision: OpenAI-compatible vision client, explicit configuration, no automatic retry or
-  fallback to text model.
+- ResumeVision: OpenAI-compatible vision client with optional explicit free-quota vision routing.
 - ResumeVision.__init__: Validate dedicated vision configuration, create async client.
 - ResumeVision.review: Pass single-page image and text, verify final model state and structure.
 - ResumeVision.close: Asynchronously release client connection.
@@ -15,7 +16,8 @@ Configuration Notes:
 RESUME_VISION_PROVIDER must be dashscope or openai, RESUME_VISION_MODEL required;
 Credentials reuse existing API_KEY from selected provider, BASE_URL matches provider’s existing
 configuration.
-RESUME_VISION_TIMEOUT_SECONDS defaults to 90 seconds; one request per page, max_retries=0.
+RESUME_VISION_TIMEOUT_SECONDS defaults to 90 seconds; one logical review per page, max_retries=0.
+Enabled free_pool shares that budget across explicit quota/access transitions.
 RESUME_VISION_ENABLE_THINKING can be explicitly set true/false, only DashScope accepts this optional
 parameter.
 Unset value retains provider behavior; does not modify existing interview model, temperature, or
@@ -33,12 +35,13 @@ from pydantic import ValidationError
 
 from agents.model_calls import safe_error_details, validation_issues
 from agents.resume_cleanup import PageReview, ResumePage, source_lines
+from app.providers.free_pool import complete_async, require_provider
 
 logger = logging.getLogger(__name__)
 
 
 class ResumeVision:
-    """Function: Implement asynchronous vision port; logic: one call per page; constraint: errors
+    """Function: Asynchronous vision port; logic: one logical review per page; constraint: errors
     and cancellations propagate directly.
     """
 
@@ -51,6 +54,7 @@ class ResumeVision:
         client must be closed by caller in finally block, keys not logged or returned in response.
         """
         self.provider = os.environ.get("RESUME_VISION_PROVIDER", "")
+        require_provider(self.provider)
         self.model = os.environ.get("RESUME_VISION_MODEL", "").strip()
         if self.provider not in {"dashscope", "openai"} or not self.model:
             raise ValueError("Set RESUME_VISION_PROVIDER and RESUME_VISION_MODEL.")
@@ -85,8 +89,8 @@ class ResumeVision:
         )
 
     async def review(self, page: ResumePage, prompt: str) -> PageReview:
-        """Input image page and system prompt, output schema validation result; no repair or retry
-        attempted.
+        """Input image page and system prompt, output schema validation result; no schema repair.
+        Explicit free-pool mode advances only approved vision models on terminal model errors.
 
         Image uses embedded PNG, not uploaded to file service; model must support image and JSON
         schema.
@@ -100,7 +104,9 @@ class ResumeVision:
         started = perf_counter()
         logger.info("resume_vision start page=%s model=%s", page.number, self.model)
         try:
-            response = await self.client.chat.completions.create(
+            response = await complete_async(
+                self.client,
+                capability="vision",
                 model=self.model,
                 response_format={"type": "json_object"},
                 messages=[
@@ -147,9 +153,10 @@ class ResumeVision:
                 raise ValueError("resume_vision_incomplete_or_refused")
             result = PageReview.model_validate_json(choice.message.content or "")
             logger.info(
-                "resume_vision validated page=%s corrections=%d uncertainties=%d "
+                "resume_vision validated page=%s response_model=%s corrections=%d uncertainties=%d "
                 "input_tokens=%s output_tokens=%s",
                 page.number,
+                getattr(response, "model", self.model),
                 len(result.corrections),
                 len(result.uncertainties),
                 getattr(getattr(response, "usage", None), "prompt_tokens", None),
