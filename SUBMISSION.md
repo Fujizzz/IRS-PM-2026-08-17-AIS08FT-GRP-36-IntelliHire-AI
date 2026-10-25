@@ -19,25 +19,25 @@ The repository template is <https://github.com/IRS-PM/Workshop-Project-Submissio
 - [x] README organized into the template's seven sections.
 - [x] Runnable project under `SystemCode/`, with tests, dependency locks and module documentation.
 - [x] Existing proposal and technical reports under `ProjectReport/`.
-- [x] `Video/` and `Miscellaneous/` reserved with explicit status notes.
-- [ ] Complete the final group report and MR/RS/CGS functionality mapping.
-- [ ] Record both five-minute videos and link them from the README.
-- [ ] Complete full member names, student IDs and agreed work allocations.
+- [x] Presentation recordings under `Video/`; supplementary material under `Miscellaneous/`.
+- [x] Final group report supplied, including the MR/RS/CGS functionality mapping in Appendix B.
+- [x] Promotion and system-design recordings supplied and linked from the README.
+- [x] Member names, student IDs and work allocations recorded in the final report; `member-github.txt` supplied in the Canvas package.
 - [x] GitHub repository renamed to the formal submission name; use the URL above in `member-github.txt`.
 - [ ] Obtain required external models/data and verify installation on the demonstration machine.
 
 ## Canvas group delivery
 
-Prepare the following inside the final `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI.zip`:
+The Canvas group package contains the following inside the final `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI.zip`:
 
 1. `member-github.txt`: group name, all official member names and student IDs, repository URL.
-   Complete this file for the Canvas package; personal details need not be copied into public
+   This file is supplied in the Canvas package; personal details need not be copied into public
    repository material merely to satisfy this package requirement.
-2. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-promotion.mp4`.
-3. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-system.mp4`.
-4. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI.zip`: the downloaded repository archive,
+2. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-Promotion.mp4`.
+3. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-System.mp4`.
+4. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-main.zip`: the downloaded repository archive,
    placed inside the outer delivery ZIP as specified by the course.
-5. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-Group-Report.pdf`.
+5. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-Report.pdf`: the final group report.
 
 The template documents the pattern `CourseCode-StartDate-BatchCode-TeamName-ProjectName`;
 the example names above use the team's supplied values. Individual confidential reflection

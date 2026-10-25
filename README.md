@@ -35,25 +35,35 @@ must be obtained separately; see the installation guide.
 | Repository area | Contents |
 | --- | --- |
 | [SystemCode](SystemCode/README.md) | Runnable source, dependency locks, tests, training and deployment tools |
-| [ProjectReport](ProjectReport/README.md) | Existing proposal, technical reports and installation/user guide; final report pending |
-| [Video](Video/README.md) | Reserved for the two required videos; both pending |
+| [ProjectReport](ProjectReport/README.md) | Final group report, proposal, technical reports, and installation/user guides |
+| [Video](Video/README.md) | Promotion and system-design presentation recordings |
 | [Miscellaneous](Miscellaneous/README.md) | Supplementary material and links to reproducibility records |
 
 ## SECTION 3 : CREDITS / PROJECT CONTRIBUTION
 
-Team: **Group 36 (AIS08 FT)**. Confirm the official member details and work allocations before
-submission; they have not been inferred from commit authors or local account names.
+Team: **Group 36 (AIS08 FT)**. Contributions below follow Appendix E of the
+[final group report](ProjectReport/IntelliHire_AI_Group_Report.pdf).
 
-| Official full name | Student ID | Work items / contribution | Email (optional) |
-| --- | --- | --- | --- |
-| Pending team confirmation | Pending | Pending | — |
+| Member | Main contribution |
+| --- | --- |
+| Du Ying Zeng Andrew | RAG corpus, hybrid retrieval, query encoder and retrieval evaluation |
+| Guo Lexin | Digital-human interviewer, expression Agent, speech interaction and Pixel Streaming |
+| Luo Ziyu | Competency rubric, evidence-first evaluation, deterministic scoring and scoring validation |
+| Sun Zhiquan | Job recommendation, resume processing, answer completion, AI safety and application platform |
+| Wang Shunyao | Interview Agent, time-budgeted orchestration, background replanning and question-quality validation |
+
+Student IDs and detailed work allocations are recorded in the final report. The Canvas
+submission also includes `member-github.txt` with the full member list and repository URL.
 
 ## SECTION 4 : VIDEO OF SYSTEM MODELLING & USE CASE DEMO
 
-| Video | Status |
+| Video | Recording |
 | --- | --- |
-| Five-minute promotion / business-value / use-case video | Pending — [requirements](Video/README.md) |
-| Five-minute system-design / technical-explanation video | Pending — [requirements](Video/README.md) |
+| Promotion / business value / use-case presentation | [Promotion video](Video/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-Promotion.mp4) |
+| System design / technical explanation | [System video](Video/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-System.mp4) |
+
+Both recordings are supplied in `Video/` through Git LFS and as separate playable files in
+the Canvas submission ZIP. See [video access instructions](Video/README.md).
 
 ## SECTION 5 : USER GUIDE
 
@@ -73,18 +83,22 @@ update an existing clone.
 
 ## SECTION 6 : PROJECT REPORT / PAPER
 
-The final group report is **pending**. Available material:
+The [final group report](ProjectReport/IntelliHire_AI_Group_Report.pdf) is available. It covers the business case,
+system design, implementation, experiments, findings and discussion. Appendix B contains
+the MR/RS/CGS functionality mapping, and Appendix C contains installation and user instructions.
+
+Supporting material:
 
 - [Existing project proposal](ProjectReport/Proposal/Project-Proposal.pdf).
 - [Five existing technical reports](ProjectReport/TechnicalDocumentation/README.md), with evidence
   through 2026-10-06; they require review for subsequent changes.
 - [Installation and user guide](ProjectReport/Installation-and-User-Guide.md).
 
-The report outline and required appendices are recorded in [ProjectReport/README.md](ProjectReport/README.md).
+The report and supporting documents are indexed in [ProjectReport/README.md](ProjectReport/README.md).
 Confidential individual reflection and peer evaluation are submitted separately to Canvas.
 
 ## SECTION 7 : MISCELLANEOUS
 
 See [supplementary material](Miscellaneous/README.md), [submission filenames and checklist](SUBMISSION.md),
-and [contribution instructions](CONTRIBUTING.md). Missing final deliverables are explicitly marked
-as pending; empty placeholder reports or videos are not presented as completed work.
+and [contribution instructions](CONTRIBUTING.md). The Canvas group package contains the member
+file, two recordings, repository ZIP and final group report.
