@@ -1,0 +1,27 @@
+{
+  "kaggle_kernel": "heropig/irs-jobrec-missing-v4",
+  "kaggle_kernel_version": 1,
+  "source_snapshot": "research/kaggle_jobrec_v4/submitted_v1/irs-jobrec-missing-v4.ipynb",
+  "files": {
+    "jobrec_v1.py": {
+      "sha256": "300883ef6e12e1b7ac3697eedecdb20c9e9e121113d9d461477bf2b4e792305e",
+      "original_source": "research/kaggle_jobrec_v1/experiment.py"
+    },
+    "jobrec_v2.py": {
+      "sha256": "d27b7bdb985468bf61d8ff84ce0b2fb888d73ab9d239fcc5b5dc8dce7c576991",
+      "original_source": "research/kaggle_jobrec_v2/ablation.py"
+    },
+    "jobrec_missing.py": {
+      "sha256": "227b82a6db8b7072fc2938024d1282fe7af7953659e9e375b9460fc88c4967d3",
+      "original_source": "research/kaggle_jobrec_v4/missing.py"
+    },
+    "jobrec_missing_eval.py": {
+      "sha256": "c0bd8081ca731b832e1315640dbaa4ea64a5eeb6f52b02a344c1a98714f8f02b",
+      "original_source": "research/kaggle_jobrec_v4/evaluation.py as submitted to Kaggle"
+    },
+    "experiment.py": {
+      "sha256": "be356b627c96c759b7b075281dd129ca95d0f82e0712e7f8df6661cd86d9d344",
+      "original_source": "research/kaggle_jobrec_v4/experiment.py"
+    }
+  }
+}

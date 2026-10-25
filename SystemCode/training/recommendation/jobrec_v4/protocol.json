@@ -1,0 +1,155 @@
+{
+  "name": "jobrec-missing-v4",
+  "seed": 42,
+  "mask_replicates": 5,
+  "training_mix": {
+    "clean": 0.5,
+    "random_30": 0.25,
+    "optional_bundle": 0.25
+  },
+  "validation_scenarios": [
+    "clean",
+    "random_30",
+    "optional_bundle"
+  ],
+  "primary_scenarios": [
+    "random_30",
+    "optional_bundle",
+    "mixed_optional"
+  ],
+  "selection": "per-task equal mean validation AP; grid20..200; earliest tie",
+  "models": [
+    "H",
+    "A",
+    "B",
+    "C",
+    "D"
+  ],
+  "tree_grid": [
+    20,
+    40,
+    60,
+    80,
+    100,
+    120,
+    140,
+    160,
+    180,
+    200
+  ],
+  "bootstrap_replicates": 2000,
+  "clean_max_drop": 0.02,
+  "missing_min_gain": 0.03,
+  "ranker": {
+    "objective": "lambdarank",
+    "n_estimators": 200,
+    "learning_rate": 0.05,
+    "num_leaves": 15,
+    "min_child_samples": 20,
+    "reg_lambda": 1.0,
+    "random_state": 42,
+    "n_jobs": 2,
+    "verbosity": -1,
+    "deterministic": true,
+    "force_col_wise": true
+  },
+  "user_blocks": [
+    [
+      "skills"
+    ],
+    [
+      "interests"
+    ],
+    [
+      "masters_major",
+      "second_major",
+      "undergrad_major"
+    ],
+    [
+      "in_person_commitment"
+    ],
+    [
+      "gpa"
+    ],
+    [
+      "months_experience"
+    ],
+    [
+      "academic_level"
+    ],
+    [
+      "hours_per_week"
+    ],
+    [
+      "length_of_commitment"
+    ],
+    [
+      "num_publications"
+    ],
+    [
+      "commit_to_summer"
+    ]
+  ],
+  "job_blocks": [
+    [
+      "required_skills"
+    ],
+    [
+      "industry"
+    ],
+    [
+      "acceptable_majors"
+    ],
+    [
+      "job_in_person_commitment"
+    ],
+    [
+      "min_gpa"
+    ],
+    [
+      "min_months_experience"
+    ],
+    [
+      "min_academic_level"
+    ],
+    [
+      "min_hours_per_week"
+    ],
+    [
+      "min_length_of_commitment"
+    ],
+    [
+      "min_num_publications"
+    ]
+  ],
+  "optional_columns": [
+    4,
+    7,
+    8,
+    9,
+    10
+  ],
+  "core_columns": [
+    0,
+    1,
+    2,
+    3,
+    5,
+    6
+  ],
+  "feature_names": [
+    "skill_coverage",
+    "interest_matches_industry",
+    "major_accepted",
+    "work_mode_matches",
+    "gpa_margin",
+    "experience_months_margin",
+    "academic_level_margin",
+    "weekly_hours_margin",
+    "commitment_months_margin",
+    "publications_margin",
+    "summer_commitment"
+  ],
+  "lightgbm": "4.6.0",
+  "scope": "development diagnostics; synthetic labels; no interview fusion or deployment"
+}

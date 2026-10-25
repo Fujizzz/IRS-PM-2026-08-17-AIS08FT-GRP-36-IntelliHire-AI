@@ -1,0 +1,18 @@
+{
+  "id": "heropig/irs-jobrec-missing-v4",
+  "title": "IRS JobRec Missing V4",
+  "code_file": "experiment.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "kernel_sources": [
+    "heropig/irs-jobrec-feasibility-v1",
+    "heropig/irs-jobrec-controls-v3"
+  ],
+  "dataset_sources": [],
+  "competition_sources": [],
+  "model_sources": []
+}
