@@ -5,10 +5,10 @@
 | Course | IRS-PM |
 | Course start date | 2026-08-17 |
 | Class | AIS08 FT; filename token `AIS08FT` |
-| Team | Group 9; filename token `GRP-9` |
+| Team | Group 36; filename token `GRP-36` |
 | Project | IntelliHire AI; filename token `IntelliHire-AI` |
-| Submission basename | `IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI` |
-| GitHub repository | [IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI) |
+| Submission basename | `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI` |
+| GitHub repository | [IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI) |
 
 The local course specification v2.16, pages 9–10, requires the template repository plus a
 separate Canvas delivery package. Page 14 lists the deadline as **2026-10-25 23:59**.
@@ -28,16 +28,16 @@ The repository template is <https://github.com/IRS-PM/Workshop-Project-Submissio
 
 ## Canvas group delivery
 
-Prepare the following inside the final `IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI.zip`:
+Prepare the following inside the final `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI.zip`:
 
 1. `member-github.txt`: group name, all official member names and student IDs, repository URL.
    Complete this file for the Canvas package; personal details need not be copied into public
    repository material merely to satisfy this package requirement.
-2. `IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI-promotion.mp4`.
-3. `IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI-system.mp4`.
-4. `IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI.zip`: the downloaded repository archive,
+2. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-promotion.mp4`.
+3. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-system.mp4`.
+4. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI.zip`: the downloaded repository archive,
    placed inside the outer delivery ZIP as specified by the course.
-5. `IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI-Group-Report.pdf`.
+5. `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI-Group-Report.pdf`.
 
 The template documents the pattern `CourseCode-StartDate-BatchCode-TeamName-ProjectName`;
 the example names above use the team's supplied values. Individual confidential reflection

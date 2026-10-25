@@ -1,7 +1,7 @@
 # Repository reorganization — 2026-10-18
 
 Project display name: **IntelliHire AI**. Submission basename:
-`IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI`.
+`IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI`.
 
 ## Changes and preserved contracts
 
@@ -25,8 +25,8 @@ with their source tree; backend archives continue to exclude the independent Unr
 
 The initial structural migration retained the local checkout name `AiInterviewer`, its Git
 remote and root `.venv/`. A subsequent repository rename uses the formal submission name
-`IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI` at
-<https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI>, and local `origin` is updated to its `.git` URL.
+`IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI` at
+<https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI>, and local `origin` is updated to its `.git` URL.
 The existing local checkout and virtual environment paths remain in place. The workflow uses
 `GITHUB_WORKSPACE` and a `SystemCode` subtree archive, so the GitHub name does not determine
 server paths, service names or application package identifiers.

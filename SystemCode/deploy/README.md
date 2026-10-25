@@ -9,8 +9,8 @@ GitHub Actions 仍位于仓库根目录 `.github/workflows/deploy.yml`，其 she
 CI 验证的播放器文件。因此服务器的 `current/backend`、`current/deploy` 和 `.venv` 路径
 保持原样，现有 systemd 单元及固定部署入口无需随源码外层目录迁移。
 
-正式 GitHub 仓库为 [IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI)，
-工作流入口为 [Verify and deploy](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI/actions/workflows/deploy.yml)。
+正式 GitHub 仓库为 [IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI)，
+工作流入口为 [Verify and deploy](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI/actions/workflows/deploy.yml)。
 工作流使用 `GITHUB_WORKSPACE` 定位检出目录，不依赖仓库名称；`main` 推送仍触发完整验证和部署。
 部署所需的仓库 secrets 为 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS`；SSH 用户、服务器地址、
 `/opt/ai-interviewer`、数据库和 systemd 服务名称沿用原配置。改名后的发布须同时核对

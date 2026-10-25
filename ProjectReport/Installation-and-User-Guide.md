@@ -7,7 +7,7 @@ Actions. **`SystemCode/` is the application root** and contains the complete pre
 layout. Paths such as `backend/`, `rag/`, `.env` and `pyproject.toml` in module guides are relative
 to `SystemCode/` unless an explicit repository-root path is shown.
 
-The official GitHub repository is [IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI).
+The official GitHub repository is [IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI).
 The existing local checkout remains `AiInterviewer` to preserve installed environment paths.
 Its local folder name is independent of the remote repository name; update existing clones
 using the commands in [CONTRIBUTING.md](../CONTRIBUTING.md).
@@ -39,8 +39,8 @@ If activation is restricted, call the interpreter explicitly from `SystemCode/`:
 Install Git and Git LFS, then clone the official repository:
 
 ```powershell
-git clone https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI.git
-Set-Location .\IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI
+git clone https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI.git
+Set-Location .\IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI
 git lfs pull
 ```
 

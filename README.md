@@ -6,11 +6,11 @@ An AI-assisted interview practice and feedback system.
 
 **Live Demo:** [https://47.239.50.129/](https://47.239.50.129/)
 
-**IRS Practice Module · AIS08 FT · Group 9 · Course start: 2026-08-17**
+**IRS Practice Module · AIS08 FT · Group 36 · Course start: 2026-08-17**
 
-Submission name: `IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI`.
+Submission name: `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI`.
 
-Official repository: [IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI).
+Official repository: [IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI).
 This repository follows the [IRS project submission template](https://github.com/IRS-PM/Workshop-Project-Submission-Template).
 
 ## SECTION 2 : EXECUTIVE SUMMARY / PAPER ABSTRACT
@@ -37,7 +37,7 @@ must be obtained separately; see the installation guide.
 
 ## SECTION 3 : CREDITS / PROJECT CONTRIBUTION
 
-Team: **Group 9 (AIS08 FT)**. Confirm the official member details and work allocations before
+Team: **Group 36 (AIS08 FT)**. Confirm the official member details and work allocations before
 submission; they have not been inferred from commit authors or local account names.
 
 | Official full name | Student ID | Work items / contribution | Email (optional) |

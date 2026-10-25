@@ -14,7 +14,7 @@
 
 # intellihire-data
 
-IntelliHire（NUS-ISS Group 9：简历→职位推荐 + 适应性 LLM 面试 + BARS 评分）项目的
+IntelliHire（NUS-ISS Group 36：简历→职位推荐 + 适应性 LLM 面试 + BARS 评分）项目的
 RAG 数据采集管道：**raw → clean → chunks（JSONL）**。
 
 前半部分（fetch/clean/chunk）把各来源的数据拉下来、清洗、切分成带完整 metadata 的 chunk，

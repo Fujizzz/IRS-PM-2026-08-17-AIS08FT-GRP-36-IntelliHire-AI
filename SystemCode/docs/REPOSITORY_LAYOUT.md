@@ -5,7 +5,7 @@ application root; moving that directory as a unit preserves imports, data paths 
 boundaries. The project display name is IntelliHire AI. Existing Python package identifiers,
 service names and dependency locks retain their established values.
 
-Official GitHub repository: [IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI).
+Official GitHub repository: [IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI).
 The tree below uses the retained local checkout name; a fresh clone defaults to the formal
 repository name. Both layouts use `SystemCode/` as the application root.
 

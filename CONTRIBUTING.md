@@ -7,11 +7,11 @@ belong in `ProjectReport/`, `Video/` and `Miscellaneous/` respectively.
 
 ## Repository address
 
-The official repository is [IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI).
+The official repository is [IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI).
 From an existing clone, update the remote before fetching or pushing:
 
 ```bash
-git remote set-url origin https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI.git
+git remote set-url origin https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI.git
 git fetch origin
 git remote -v
 ```
