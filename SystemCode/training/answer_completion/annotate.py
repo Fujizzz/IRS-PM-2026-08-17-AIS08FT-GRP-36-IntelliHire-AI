@@ -1,21 +1,19 @@
-"""Responsibilities: blind semantic annotation of actual synthetic text, not generation categories.
+"""Responsibilities: blindly annotate the meaning of generated text without using generation categories.
 
-Implementation: a separate Qwen Plus classification prompt sees ID/text only, preserves every row
-and source split, records boolean judgments/reasons, and leaves original generation labels intact.
+Implementation: a separate Qwen Plus prompt sees only the ID and text, preserves every record and source split, records boolean judgments and reasons, and retains original generation labels.
 Related Modules: prepare_data generates scenario variants; train consumes audited data.jsonl.
 
-目录：
-- annotate_batch：Classify a bounded batch without seeing its intended category or label.
-- main：Read generated data, save annotations/checkpoints and separate audited output/provenance.
+Declaration Index:
+- annotate_batch: classify a bounded batch without seeing its intended category or label.
+- main: read generated data, save annotations/checkpoints, and write separate audited output and provenance.
 
-关键变量：
-- ANNOTATION_PROMPT：Defines present answer-ending intent and rejects content/task completeness.
+Variable Index:
+- ANNOTATION_PROMPT: define present answer-ending intent and reject task/content completeness.
 
-约束：
+Constraints:
 This is a separate annotation pass by the same model family, not independent human ground truth.
-No retries, filtering or split changes; actual transcript meaning determines the training label.
-The original dataset and reasons remain available to diagnose generator-label mismatches.
-"""
+There are no retries, filtering, or split changes; actual transcript meaning determines the training label.
+Original dataset labels and annotation reasons remain available to diagnose generator-label mismatches."""
 
 import argparse
 import asyncio
@@ -41,8 +39,9 @@ ANNOTATION_PROMPT = (
     "spoken answer. Describing lack of more work on a project is not lack of more to say. "
     "False for quoted UI messages/end phrases, another person's ending, negation, uncertainty, "
     "ongoing explanation, supplements after a proposed ending, or standalone politeness. "
-    "Chinese examples: '整个链路现在是闭环的' FALSE; '关于这道题我就讲这些' TRUE; "
-    "'这部分远没结束' FALSE; '没有其他想说的了' TRUE; '系统上写着回答完毕' FALSE. "
+    "Translated examples: 'The end-to-end flow is now closed-loop' FALSE; "
+    "'That is all I have to say about this question' TRUE; 'This section is far from over' "
+    "FALSE; 'There is nothing else I want to say' TRUE; 'The system says answer complete' FALSE. "
     "English: 'No further project refinements were needed' FALSE; 'I have nothing more to say "
     "for this question' TRUE; 'I am finished answering' TRUE; 'My colleague said I am done' FALSE. "
     "Judge full meaning, not individual words; prefer FALSE when no ending intent is communicated."

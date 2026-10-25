@@ -1,12 +1,29 @@
-"""职责：在固定 v1 数据与向量上验证特征和任务共享的贡献。
-实现：校验输入哈希；同一起点比较四种网络；按查询配对 bootstrap 测试预测。
-关联：jobrec_v1 是 notebook 内封装的原版 experiment.py，源码 SHA256 固定。
-目录：verify_inputs、feature_view、IndependentHeads、IndependentHeads.__init__、
-IndependentHeads.forward、masked_loss、train_variant、bootstrap_ap、query_bootstrap、main。
-变量索引：CONFIG 为原实验配置；PROTOCOL 为新增消融配置；INPUT_HASHES 固定输入哈希；
-LOGGER 为不含凭据/档案正文的阶段日志。实例 branches 存两个互不共享参数的网络。
-约束：不修改 v1，不更换划分、训练种子或超参数；bootstrap 不代表训练随机性检验。
-"""
+"""Responsibilities: measure feature and task-sharing contributions using fixed v1 data and embeddings.
+Implementation: verify input hashes, compare four networks from the same initialization, and use paired
+query bootstrap on test predictions.
+Related Modules: jobrec_v1 is the original experiment.py embedded in the notebook; its source hash is fixed.
+
+Declaration Index:
+- verify_inputs: verify parent artifact identity.
+- feature_view: remove the registered feature group for one comparison variant.
+- IndependentHeads: define separate task networks initialized from the shared starting model.
+- IndependentHeads.__init__: clone the shared trunk and each task's corresponding head.
+- IndependentHeads.forward: return both independent task logits.
+- masked_loss: compute loss only for observed labels.
+- train_variant: run one controlled training comparison and score every pair.
+- bootstrap_ap: compute paired AP under query-resampling counts.
+- query_bootstrap: compute model intervals and preregistered paired differences.
+- main: validate inputs, train four comparisons, evaluate, and save audit results.
+
+Variable Index:
+- CONFIG: inherited fixed v1 experiment configuration.
+- PROTOCOL: new v2 ablation conditions.
+- INPUT_HASHES: hashes binding the required parent inputs.
+- LOGGER: stage-level logs without credentials or profile text.
+- branches: instance state containing two networks with independent parameters.
+
+Constraints: do not modify v1, split, seed, or hyperparameters; bootstrap intervals do not test
+training-seed variability."""
 
 from __future__ import annotations
 
@@ -51,9 +68,10 @@ LOGGER = logging.getLogger("jobrec_ablation")
 
 
 def verify_inputs(folder: Path) -> None:
-    """功能：验证父实验产物身份；输入父目录；输出无，失败抛出异常。
-    逻辑：逐文件比对 SHA256 并检查配置；约束：不接受同名但已更新的父产物。
-    """
+    """Functionality: verify the identity of parent experiment artifacts.
+    Inputs: parent output directory. Outputs: none.
+    Logic: compare SHA256 values for each required file and validate configuration.
+    Constraints: reject updated parent artifacts even when filenames are unchanged."""
     for name, expected in INPUT_HASHES.items():
         actual = hashlib.sha256((folder / name).read_bytes()).hexdigest()
         if actual != expected:
@@ -64,10 +82,12 @@ def verify_inputs(folder: Path) -> None:
 
 
 def feature_view(features: np.ndarray, variant: str) -> np.ndarray:
-    """功能：移除指定特征块；输入 N×2059矩阵和实验名；输出独立副本。
-    逻辑：结构化组把前2048维归零，向量组把后11维归零；约束：原矩阵保持不变，
-    保留相同层宽与参数量，但零输入意味着实际可用特征容量仍不同。
-    """
+    """Functionality: remove one feature group for a registered comparison.
+    Inputs: N-by-2059 matrix and experiment name. Outputs: an independent copy.
+    Logic: zero the first 2048 columns for the structured-only view or the final 11 columns for the
+    embedding-only view.
+    Constraints: preserve the source matrix. Layer widths and parameter counts remain the same, but
+    zeroed inputs reduce the effective usable feature capacity."""
     if features.shape[1] != 2059 or variant not in PROTOCOL["variants"]:
         raise ValueError("Unexpected feature dimension or variant")
     result = features.copy()
@@ -79,14 +99,16 @@ def feature_view(features: np.ndarray, variant: str) -> np.ndarray:
 
 
 class IndependentHeads(torch.nn.Module):
-    """功能：将两任务拆为独立网络；逻辑：各自克隆同一初始 trunk 和对应 head。
-    约束：每任务层宽不变，总参数约翻倍；这是共享与不共享对照，不是等总参数对照。
-    """
+    """Functionality: define independent task networks.
+    Logic: each network copies the shared initial trunk and its corresponding task head.
+    Constraints: preserve each task's layer width, approximately double total parameters, and interpret
+    this as a sharing comparison rather than an equal-parameter comparison."""
 
     def __init__(self, template: base.DualHeadModel):
-        """功能：创建独立分支；输入已初始化的共享模型；输出模块实例。
-        逻辑：deepcopy 阻断参数别名且不消耗新的初始化随机数；约束：仅 branches 有状态。
-        """
+        """Functionality: create independent task branches.
+        Inputs: initialized shared model. Outputs: a new IndependentHeads instance.
+        Logic: deepcopy prevents parameter aliasing and does not consume new initialization random numbers.
+        Constraints: only `branches` carries model state."""
         super().__init__()
         self.branches = torch.nn.ModuleList([
             torch.nn.Sequential(copy.deepcopy(template.trunk), copy.deepcopy(head))
@@ -94,18 +116,20 @@ class IndependentHeads(torch.nn.Module):
         ])
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
-        """功能：计算独立任务 logits；输入 B×2059；输出 B×2。
-        逻辑：拼接两个分支输出；约束：训练时两分支各自抽取 dropout 掩码。
-        """
+        """Functionality: compute logits from the independent task branches.
+        Inputs: B-by-2059 tensor. Outputs: B-by-2 logits.
+        Logic: concatenate each branch's task output.
+        Constraints: dropout masks are sampled independently in the two branches during training."""
         return torch.cat([branch(features) for branch in self.branches], dim=1)
 
 
 def masked_loss(logits: torch.Tensor, labels: torch.Tensor, observed: torch.Tensor,
                 positive_weights: torch.Tensor) -> torch.Tensor:
-    """功能：仅使用观测标签计算损失；输入 B×2 logits/标签/mask 及2维正类权重。
-    输出标量；逻辑：各有观测任务内部取均值，再对任务取均值，与 v1 相同。
-    约束：未知位置标签必须已填有限占位值；两任务全无观测时明确报错。
-    """
+    """Functionality: calculate loss over observed labels only.
+    Inputs: B-by-2 logits, labels, mask, and two positive-class weights. Outputs: scalar loss.
+    Logic: average within each task's observed labels, then average across tasks, matching v1.
+    Constraints: unknown positions must contain finite placeholder values; raise explicitly if neither task
+    has an observed label."""
     element = torch.nn.functional.binary_cross_entropy_with_logits(
         logits, labels, pos_weight=positive_weights, reduction="none")
     losses = [(element[:, c] * observed[:, c]).sum() / observed[:, c].sum()
@@ -116,10 +140,12 @@ def masked_loss(logits: torch.Tensor, labels: torch.Tensor, observed: torch.Tens
 
 
 def train_variant(pairs: pd.DataFrame, features: np.ndarray, variant: str, output: Path) -> np.ndarray:
-    """功能：执行一次受控训练；输入配对/特征/组名/目录；输出所有配对的两任务分数。
-    逻辑：每组训练前重设相同seed；同 minibatch 顺序、损失和联合验证选择；保存检查点。
-    约束：仅在12轮内选择，不使用测试标签选模型；v1训练前的RNG位置不作为本组对照。
-    """
+    """Functionality: run one controlled network comparison.
+    Inputs: pairs, feature matrix, variant name, and output directory. Outputs: N-by-2 scores.
+    Logic: reset the same seed before each variant; retain minibatch order, loss, and joint validation
+    selection; save the selected checkpoint.
+    Constraints: select only within 12 epochs and never use test labels; v1's pretraining RNG position is
+    not treated as part of this comparison."""
     random.seed(CONFIG["seed"])
     np.random.seed(CONFIG["seed"])
     torch.manual_seed(CONFIG["seed"])
@@ -187,10 +213,11 @@ def train_variant(pairs: pd.DataFrame, features: np.ndarray, variant: str, outpu
 
 def bootstrap_ap(labels: np.ndarray, scores: np.ndarray, group_ids: np.ndarray,
                  counts: np.ndarray) -> np.ndarray:
-    """功能：计算重复抽样查询后的配对AP；输入标签/分数/组索引/每次组抽样计数。
-    输出每次抽样AP；逻辑：查询重复数作为样本权重，按相同分数整体计算precision阶梯。
-    约束：不是query平均AP；拒绝无正例抽样，按100个replicate分块限制内存。
-    """
+    """Functionality: compute paired AP for query-resampled test sets.
+    Inputs: labels, scores, group indices, and bootstrap query counts. Outputs: one AP per replicate.
+    Logic: use query multiplicities as sample weights and compute precision steps across tied scores.
+    Constraints: this is not mean query AP; reject replicates without positives; process 100 replicates per
+    block to limit memory."""
     order = np.argsort(-scores, kind="stable")
     sorted_labels, sorted_scores = labels[order], scores[order]
     ends = np.r_[np.flatnonzero(np.diff(sorted_scores)), len(scores) - 1]
@@ -208,12 +235,13 @@ def bootstrap_ap(labels: np.ndarray, scores: np.ndarray, group_ids: np.ndarray,
 
 
 def query_bootstrap(predictions: pd.DataFrame, model_names: list[str], output: Path) -> dict:
-    """功能：量化固定模型在测试查询抽样下的不确定性；输入测试预测/模型名/目录；输出区间。
-    逻辑：偏好按候选人、资格按岗位抽样2000次，同一任务所有模型共用抽样；输出AP、
-    nDCG@5和Recall@5及预先指定的配对差值区间。
-    约束：百分位95%区间是探索性未校正多重比较；偏好结果条件于当前测试岗位集合，
-    不覆盖训练种子或换岗位划分的方差；全负查询只从排名均值排除。
-    """
+    """Functionality: quantify query-sampling uncertainty for fixed models.
+    Inputs: test predictions, model names, and output directory. Outputs: interval reports.
+    Logic: sample preference candidates and qualification jobs 2,000 times; reuse the same draws for all
+    models within each task; report AP, nDCG@5, Recall@5, and preregistered paired differences.
+    Constraints: percentile 95% intervals are exploratory and unadjusted for multiple comparisons.
+    Preference results are conditional on the current test jobs and do not include training-seed or
+    alternative-split variation. Exclude all-negative queries only from ranking means."""
     result = {"replicates": PROTOCOL["bootstrap_replicates"], "models": {}, "comparisons": {}}
     contrasts = [("shared_full", name) for name in (
         "shared_structured", "shared_vector", "independent_full", "structured_logistic")]
@@ -258,10 +286,12 @@ def query_bootstrap(predictions: pd.DataFrame, model_names: list[str], output: P
 
 
 def main() -> None:
-    """功能：执行消融与结果审计；输入挂载的v1产物和Kaggle GPU环境；输出ablation_v2目录。
-    逻辑：先验证身份及重新生成的配对/特征，再四组训练和统一评测，最后不确定性分析。
-    约束：任何失败记录阶段并抛出；不改超参数、重试或回退。模型下载/编码直接复用已核验向量。
-    """
+    """Functionality: run the ablation and result audit.
+    Inputs: mounted v1 artifacts and Kaggle GPU environment. Outputs: `ablation_v2` artifacts.
+    Logic: verify parent identity, reconstruct pairs/features, train four variants, evaluate, and analyze
+    uncertainty.
+    Constraints: record failures and re-raise; do not change hyperparameters, retry, or fall back. Reuse
+    verified embeddings rather than downloading or encoding them again."""
     output = Path("/kaggle/working/ablation_v2")
     output.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",

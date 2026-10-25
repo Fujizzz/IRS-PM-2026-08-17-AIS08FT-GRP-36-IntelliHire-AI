@@ -1,12 +1,32 @@
-"""职责：定义v4冻结协议、实体级资料遮蔽与缺失感知特征。
-实现：SHA256确定掩码；先隐藏原始字段，再计算NaN感知的11项配对特征。
-关联：jobrec_v1提供既定列表解析和特征名；experiment负责训练，evaluation负责评测。
-目录：uniform、scenarios、make_masks、hide_profiles、unknown、number、sequence、
-      academic、boolean、features、feature_view。
-变量索引：USER_BLOCKS/JOB_BLOCKS为资料块；OPTIONAL/CORE为列索引；LEVELS为学业编码；
-      RANKER_CONFIG为历史树参数；PROTOCOL为已批准的新条件；HISTORICAL为v3产物哈希。
-约束：不读取标签决定缺失；不补零、不推断隐藏字段、不自动重试；ID不是预测特征。
-"""
+"""Responsibilities: define the frozen v4 protocol, entity-level profile masking, and missing-aware features.
+Implementation: derive deterministic masks from SHA256, hide source fields before feature calculation,
+then compute 11 NaN-aware pairwise features.
+Related Modules: jobrec_v1 supplies the established list parser and feature names; experiment trains;
+jobrec_missing_eval evaluates.
+
+Declaration Index:
+- uniform: produce a deterministic uniform value from the registered identity tuple.
+- scenarios: list the fixed evaluation scenarios and repeat counts.
+- make_masks: create deterministic user/job field masks without using labels.
+- hide_profiles: physically hide selected source values before feature construction.
+- unknown: classify a scalar as missing without conflating invalid values with absence.
+- number: parse known numeric values while preserving missingness.
+- sequence: parse known list fields while preserving unknown versus empty.
+- academic: map a supported academic-level code.
+- boolean: convert a supported summer-commitment value.
+- features: recompute the 11-dimensional pair feature matrix from visible source fields.
+- feature_view: build the registered 11-, 22-, or 6-column model input.
+
+Variable Index:
+- USER_BLOCKS/JOB_BLOCKS: atomic user/job profile groups used for masking.
+- OPTIONAL/CORE: fixed feature-column indices for the registered variants.
+- LEVELS: supported academic-level encoding.
+- RANKER_CONFIG: fixed historical tree parameters.
+- PROTOCOL: approved v4 scenarios, model variants, and selection conditions.
+- HISTORICAL: hashes for the v3 reference rankers and predictions.
+
+Constraints: missingness is not chosen from labels; do not zero-fill or infer hidden values; do not
+retry. IDs are used to derive masks but are not prediction features."""
 
 import hashlib
 import json
@@ -50,17 +70,21 @@ HISTORICAL = {
 
 
 def uniform(namespace: str, scenario: str, repeat: int, entity: str, block: str) -> float:
-    """功能：生成稳定均匀值；输入用途/场景/重复/实体/块；输出[0,1)数。
-    逻辑：seed42和参数JSON的SHA256前8字节转无符号数；约束：不依赖行序或进程hash。
-    """
+    """Functionality: return a stable pseudo-random value in [0, 1).
+    Inputs: namespace, scenario, repeat number, entity ID, and profile block.
+    Outputs: deterministic float in [0, 1).
+    Logic: serialize the fixed seed and identity tuple as compact JSON, hash it with SHA256, and map the
+    first eight bytes to an unsigned integer fraction.
+    Constraints: independent of row order and Python process hashing."""
     raw = json.dumps([42, namespace, scenario, repeat, str(entity), block], separators=(",", ":")).encode()
     return int.from_bytes(hashlib.sha256(raw).digest()[:8], "big") / 2**64
 
 
 def scenarios() -> list[tuple[str, int]]:
-    """功能：列举固定评测清单；输入模块协议；输出场景/重复序列。
-    逻辑：确定性场景一次，五种随机场景各五次；约束：r0主报告，不按成绩选择重复。
-    """
+    """Functionality: enumerate the fixed evaluation scenarios.
+    Inputs: the module-level frozen protocol. Outputs: ordered scenario/repeat pairs.
+    Logic: include each deterministic scenario once and five random scenarios five times each.
+    Constraints: repeat zero is the primary report; repeats are not selected based on scores."""
     fixed = ["clean", "optional_bundle", "skills_only", "no_candidate_information"]
     fixed += ["single_" + str(i) for i in range(11)]
     random = ["random_10", "random_30", "random_50", "mixed_optional", "job_random_30"]
@@ -69,9 +93,11 @@ def scenarios() -> list[tuple[str, int]]:
 
 def make_masks(users: pd.DataFrame, jobs: pd.DataFrame, scenario: str, repeat: int = 0,
                namespace: str = "evaluation") -> tuple[np.ndarray, np.ndarray, list[str]]:
-    """功能：生成实体资料块缺失掩码；输入含ID的实体表/场景/重复/用途；输出两掩码及用户分配。
-    逻辑：固定或SHA抽样选择块，training_mix先分配50/25/25类别；约束：只读ID，不读标签。
-    """
+    """Functionality: create user and job profile masks for a registered scenario.
+    Inputs: entity tables with IDs, scenario, repeat index, and mask namespace.
+    Outputs: user mask, job mask, and user assignment labels.
+    Logic: select fixed blocks or hash-derived blocks; assign training-mix users to the 50/25/25 groups.
+    Constraints: only IDs determine assignments; labels are never read."""
     allowed = {name for name, _ in scenarios()} | {"training_mix"}
     if scenario not in allowed or repeat not in range(5):
         raise ValueError("Unregistered mask scenario or repeat")
@@ -107,9 +133,11 @@ def make_masks(users: pd.DataFrame, jobs: pd.DataFrame, scenario: str, repeat: i
 
 
 def hide_profiles(frame: pd.DataFrame, masks: np.ndarray, blocks: list) -> pd.DataFrame:
-    """功能：物理隐藏原始字段；输入实体表/块掩码/块定义；输出独立资料表。
-    逻辑：相关列转object后将选择值置None；约束：不修改源表，不保留隐藏值供特征计算。
-    """
+    """Functionality: create copies of profile tables with selected source fields hidden.
+    Inputs: entity table, Boolean block mask, and block definitions.
+    Outputs: an independent table with selected values set to None.
+    Logic: cast affected columns to object before replacing selected cells.
+    Constraints: never mutate the source table or retain hidden values for feature calculation."""
     if masks.shape != (len(frame), len(blocks)):
         raise ValueError("Mask shape differs from entity table")
     result = frame.copy()
@@ -121,16 +149,19 @@ def hide_profiles(frame: pd.DataFrame, masks: np.ndarray, blocks: list) -> pd.Da
 
 
 def unknown(value: object) -> bool:
-    """功能：判定标量未知；输入单字段值；输出布尔；逻辑：仅None或浮点NaN为未知。
-    约束：空字符串、无穷大、错误类型不伪装成缺失，列表由sequence单独解析。
-    """
+    """Functionality: determine whether a scalar denotes unknown data.
+    Inputs: one field value. Outputs: Boolean.
+    Logic: only None and floating-point NaN are unknown.
+    Constraints: empty strings, infinities, and invalid types are not converted to missing; list fields use
+    sequence parsing."""
     return value is None or isinstance(value, (float, np.floating)) and np.isnan(value)
 
 
 def number(value: object) -> float:
-    """功能：解析已知数值；输入标量；输出float或NaN；逻辑：未知保留，其他转float。
-    约束：无穷大、布尔和非法文本报错，已知零不改写。
-    """
+    """Functionality: parse one numeric profile field while preserving absence.
+    Inputs: one scalar. Outputs: a finite float or NaN.
+    Logic: retain values classified as unknown; convert supported known values to float.
+    Constraints: reject infinity, Boolean values, and invalid text; preserve a known zero."""
     if unknown(value):
         return np.nan
     if isinstance(value, (bool, np.bool_)):
@@ -142,23 +173,27 @@ def number(value: object) -> float:
 
 
 def sequence(value: object) -> set | None:
-    """功能：解析技能/兴趣/专业列表；输入字段；输出集合或None。
-    逻辑：已知字段沿用v1解析器；约束：未知不会变为空集合，不调整大小写。
-    """
+    """Functionality: parse a skill, interest, or major list while preserving unknown state.
+    Inputs: one field value. Outputs: a set or None.
+    Logic: use the established v1 parser for known values.
+    Constraints: do not convert unknown to an empty set or alter case."""
     return None if unknown(value) else set(base.parse_list(value))
 
 
 def academic(value: object) -> float:
-    """功能：学业阶段映射；输入代码；输出原编码或NaN；逻辑：查固定LEVELS。
-    约束：未知代码报错，不将未支持代码视为普通缺失。
-    """
+    """Functionality: validate and map an academic-level code.
+    Inputs: one code. Outputs: the supported original code or NaN.
+    Logic: look up the fixed LEVELS mapping.
+    Constraints: reject unsupported codes rather than treating them as ordinary missing data."""
     return np.nan if unknown(value) else float(LEVELS[value])
 
 
 def boolean(value: object) -> float:
-    """功能：暑期布尔转换；输入值；输出0/1/NaN；逻辑：只接受true/false字符串或布尔。
-    约束：未知不映射false，错误字符串报错；原有效数据的含义保持不变。
-    """
+    """Functionality: convert the summer-commitment field.
+    Inputs: one field value. Outputs: 0, 1, or NaN.
+    Logic: accept only Boolean values or the registered true/false strings.
+    Constraints: unknown does not mean false; invalid strings raise an error; valid source meaning is
+    unchanged."""
     if unknown(value):
         return np.nan
     text = str(value).lower()
@@ -168,11 +203,13 @@ def boolean(value: object) -> float:
 
 
 def features(pairs: pd.DataFrame, users: pd.DataFrame, jobs: pd.DataFrame) -> np.ndarray:
-    """功能：重算缺失感知匹配；输入配对索引和已隐藏原始资料；输出N×11 float32。
-    逻辑：解析实体一次，集合匹配逐配对，数值差按索引向量化；约束：不访问完整资料缓存。
-    专业以已知专业集合为依据，原无第二/硕士专业不使本科信息失效；整个专业块未知才NaN。
-    输入u_idx/j_idx必须对应给定实体表；空岗位技能沿用历史报错；NaN允许，无穷大拒绝。
-    """
+    """Functionality: recompute missing-aware pair features from masked source profiles.
+    Inputs: pair-index table and the already-hidden user/job tables.
+    Outputs: an N-by-11 float32 matrix.
+    Logic: parse each entity once, compute set matches per pair, and vectorize numeric margins.
+    Constraints: do not access a complete-profile cache. A partially known major set remains usable; only
+    an entirely unknown major block yields NaN. Indices must refer to the supplied entity tables. An empty
+    job-skill requirement preserves the historical error. NaN is allowed; infinity is rejected."""
     ui, ji = pairs.u_idx.to_numpy(), pairs.j_idx.to_numpy()
     us = [sequence(v) for v in users.skills]
     req = [sequence(v) for v in jobs.required_skills]
@@ -206,9 +243,10 @@ def features(pairs: pd.DataFrame, users: pd.DataFrame, jobs: pd.DataFrame) -> np
 
 
 def feature_view(matrix: np.ndarray, model: str) -> np.ndarray:
-    """功能：提供模型输入视图；输入N×11数组/模型名；输出11/22/6维数组。
-    逻辑：C添加NaN指示，D取固定六列，其余复制；约束：拒绝未知模型、无穷大和维度错。
-    """
+    """Functionality: construct the input view for a registered model variant.
+    Inputs: an N-by-11 feature array and variant name. Outputs: an 11-, 22-, or 6-column array.
+    Logic: C appends NaN indicators, D selects the fixed six columns, and other variants copy the input.
+    Constraints: reject unknown variants, infinity, and invalid dimensions."""
     if model not in PROTOCOL["models"] or matrix.ndim != 2 or matrix.shape[1] != 11 or np.isinf(matrix).any():
         raise ValueError("Invalid model or structured feature matrix")
     if model == "C":

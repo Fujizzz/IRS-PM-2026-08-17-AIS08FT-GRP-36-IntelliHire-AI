@@ -1,25 +1,25 @@
-"""Responsibilities: Kaggle CPU training and honest held-out evaluation of semantic rough filtering.
+"""Responsibilities: run Kaggle CPU training and honest held-out evaluation for semantic rough filtering.
 
-Implementation: frozen pinned INT8 encoder -> logistic head; threshold chosen on validation only.
-Related Modules: staged completion_gate.py supplies the exact serving encoder; experiment.json
-fixes conditions, data.jsonl has source-group splits, challenge.jsonl contains independent examples.
+Implementation: use a frozen pinned INT8 encoder and train a logistic head; select the threshold on
+validation data only.
+Related Modules: staged completion_gate.py supplies the exact serving encoder; experiment.json fixes
+conditions, data.jsonl stores source-group splits, and challenge.jsonl contains separate examples.
 
-目录：
-- install_dependencies：Install the experiment's exact training runtime versions in Kaggle.
-- metrics：Compute bilingual candidate recall, rejection and confusion matrices without relabeling.
-- choose_threshold：Choose the highest validation threshold meeting each language's recall target.
-- resolve_source：Locate the unique explicitly identified experiment in Kaggle's mounted input tree.
-- train：Check integrity, fit on training only, evaluate once and export a checksum-bound bundle.
-- main：Resolve dataset/output arguments and run the fixed experiment without retries.
+Declaration Index:
+- install_dependencies: install the experiment's exact training runtime versions in Kaggle.
+- metrics: compute per-cohort candidate recall, rejection, and confusion matrices without relabeling.
+- choose_threshold: choose the highest validation threshold meeting each cohort's recall target.
+- resolve_source: locate the unique explicitly identified experiment in Kaggle's mounted input tree.
+- train: check integrity, fit on training only, evaluate once, and export a checksum-bound bundle.
+- main: resolve dataset/output arguments and run the fixed experiment without retries.
 
-关键变量：
-（无模块级变量。）
+Variable Index:
+None
 
-约束：
-No parameter search on test/challenge sets; no fallback, auto retry or label correction. Failed
-release criteria produce an unapproved artifact and nonzero exit. Synthetic evaluation cannot
-establish real microphone/interview accuracy. The private Kaggle input contains no application keys.
-"""
+Constraints:
+No parameter search on test/challenge sets, fallback, automatic retry, or label correction. Failed
+release criteria produce an unapproved artifact and nonzero exit. Synthetic evaluation cannot establish
+real microphone/interview accuracy. The private Kaggle input contains no application keys."""
 
 import argparse
 import importlib.metadata

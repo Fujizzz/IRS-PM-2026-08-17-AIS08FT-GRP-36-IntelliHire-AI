@@ -1,38 +1,44 @@
-"""职责：在 Kaggle GPU 上运行招聘双头模型的独立、固定协议可行性实验。
-实现：下载固定提交的数据；合并一致重复配对；按岗位隔离；比较文本与结构化基线，
-      冻结 Qwen 向量后训练双头网络，并评估资格方向的 top-10 精排。
-关联：不导入或改变 AiInterviewer 业务模块；kernel-metadata.json 负责私有远端执行。
-目录：
-- write_json：原子写入审计与结果。
-- bootstrap：安装指定 Transformers 版本，检查 CUDA，记录环境。
-- download_data：下载固定版本 CSV 并记录 SHA256。
-- consolidate_labels：验证并合并重复标签，保留各任务缺失状态。
-- split_jobs：生成固定、互斥的岗位划分。
-- parse_list：解析数据中的 Python 字符串列表。
-- profile_texts：生成无身份、无标签的模型输入。
-- structured_features：计算有明确语义的配对特征。
-- prepare_data：核对实体、标签、分布及跨划分不重叠。
-- ranking_metrics：在明确标注的候选池计算排名指标和查询覆盖。
-- evaluate_scores：计算每任务 AP、AUC 与排名指标。
-- lexical_baseline：仅用训练侧语料拟合 TF-IDF。
-- encode_profiles：按固定上限编码并记录截断比例。
-- build_pair_features：组合冻结向量与结构化输入。
-- DualHeadModel：共享表示和偏好/资格两个预测头。
-- DualHeadModel.__init__：创建固定网络层。
-- DualHeadModel.forward：产生两个未校准 logits。
-- train_dual_head：以标签掩码训练并仅按验证 AP 选检查点。
-- structured_baseline：拟合训练侧标准化与两个逻辑回归。
-- rerank_qualification：对测试岗位语义召回的 top-10 做精排。
-- write_report：保存可读指标表、边界及配置。
-- main：按依赖顺序执行实验，失败时记录阶段和堆栈并重新抛出。
-变量索引：
-- CONFIG：冻结的数据提交、模型修订、划分、预处理与训练配置。
-- FILES：允许下载的七个公开合成数据文件。
-- STRUCTURED_NAMES：结构化特征的顺序与含义。
-- LOGGER：仅记录阶段、尺寸、统计与错误，不记录凭据和档案正文。
-约束：要求 CUDA；不自动换模型、减小输入或重试失败步骤。结果属于合成数据上的
-      新岗位实验；不复现作者原始划分，不把未观测标签当负例。
-"""
+"""Responsibilities: run an independent fixed-protocol feasibility study for a dual-head recommendation
+model on a Kaggle GPU.
+Implementation: download a fixed data release, consolidate consistent duplicate pairs, split by job,
+compare text and structured baselines, train a dual-head network on frozen Qwen embeddings, and assess
+top-10 qualification reranking.
+Related Modules: this historical source does not import or alter AiInterviewer business modules;
+Kaggle kernel metadata controls private remote execution.
+
+Declaration Index:
+- write_json: atomically write audit records and results.
+- bootstrap: install the specified Transformers version, check CUDA, and record the environment.
+- download_data: download fixed-version CSVs and record SHA256 hashes.
+- consolidate_labels: validate and merge duplicate labels while preserving each task's missing state.
+- split_jobs: create a fixed, mutually exclusive job split.
+- parse_list: parse Python-style list values from the data.
+- profile_texts: construct model inputs without identity or labels.
+- structured_features: compute pairwise features with explicit semantics.
+- prepare_data: verify entities, labels, distributions, and split separation.
+- ranking_metrics: compute ranking and query-coverage metrics on the explicitly labeled candidate pool.
+- evaluate_scores: compute AP, AUC, and ranking metrics for both tasks.
+- lexical_baseline: fit TF-IDF on training-side text only.
+- encode_profiles: encode with a fixed token limit and record truncation rates.
+- build_pair_features: combine frozen embeddings with structured inputs.
+- DualHeadModel: define shared representation and separate preference/qualification heads.
+- DualHeadModel.__init__: create the fixed network layers.
+- DualHeadModel.forward: produce two uncalibrated logits.
+- train_dual_head: train with label masks and select checkpoints by validation AP only.
+- structured_baseline: fit training-side standardization and two logistic regressions.
+- rerank_qualification: rerank the semantic-retrieval top 10 for each test job.
+- write_report: save readable metrics, boundaries, and configuration.
+- main: run stages in dependency order and record/re-raise failures.
+
+Variable Index:
+- CONFIG: fixed data release, model revision, split, preprocessing, and training configuration.
+- FILES: seven public synthetic data files allowed for download.
+- STRUCTURED_NAMES: ordered structured feature names and meanings.
+- LOGGER: records stage, size, statistics, and errors without credentials or profile text.
+
+Constraints: CUDA is required; do not switch models, shrink inputs, or retry failed operations. Results
+are from a synthetic-data new-job experiment; they do not reproduce the authors' original split, and
+unobserved labels are not treated as negative."""
 
 from __future__ import annotations
 
@@ -106,19 +112,21 @@ LOGGER = logging.getLogger("jobrec")
 
 
 def write_json(path: Path, value: object) -> None:
-    """功能：原子保存 JSON；输入 path/value；输出无，写文件。
-    逻辑：同目录临时文件后 replace；约束：拒绝非有限数，写入失败向调用方传播。
-    """
+    """Functionality: atomically save a JSON value.
+    Inputs: destination path and JSON-serializable value. Outputs: none; writes the file.
+    Logic: write a temporary sibling file, then replace the destination.
+    Constraints: reject nonfinite values; propagate write failures."""
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False), encoding="utf-8")
     temporary.replace(path)
 
 
 def bootstrap(output: Path) -> None:
-    """功能：准备指定依赖并检查 GPU；输入输出目录；输出无。
-    逻辑：显式安装固定 Transformers、设种子并记录平台包版本；约束：无 GPU 即失败，
-    不更换硬件或参数。Kaggle 预装 torch/numpy 等保留并记录，不能视为完整环境锁定。
-    """
+    """Functionality: install the fixed dependencies and verify the GPU environment.
+    Inputs: output directory. Outputs: none.
+    Logic: install the pinned Transformers version, set seeds, and record platform package versions.
+    Constraints: fail when CUDA is unavailable; do not change hardware or parameters. Retain and record
+    Kaggle-preinstalled Torch/NumPy; this is not a fully locked environment."""
     os.environ["HF_HOME"] = "/tmp/jobrec_hf"
     os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
     os.environ["HF_HUB_DISABLE_XET"] = "1"
@@ -151,9 +159,10 @@ def bootstrap(output: Path) -> None:
 
 
 def download_data(output: Path) -> dict[str, pd.DataFrame]:
-    """功能：取得固定提交的七份 CSV；输入输出目录；输出文件名到 DataFrame。
-    逻辑：请求公开 URL，逐文件计算哈希与行数；约束：无重试、不写凭据和原始档案副本。
-    """
+    """Functionality: obtain the seven CSVs from the fixed data release.
+    Inputs: output directory. Outputs: mapping from file names to DataFrames.
+    Logic: request public URLs and record each file's hash and row count.
+    Constraints: no retries; do not write credentials or a duplicate of raw profile text."""
     import io
 
     frames, manifest = {}, {}
@@ -171,10 +180,11 @@ def download_data(output: Path) -> dict[str, pd.DataFrame]:
 
 
 def consolidate_labels(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, dict]:
-    """功能：构造唯一配对表及原始重复审计；输入 CSV 表；输出合并表/审计。
-    逻辑：相同任务同一配对只保留一致标签；不同任务 outer join 保留 NaN 掩码。
-    约束：冲突或非二元标签直接报错；不使用源 score、不把缺失资格补成 0。
-    """
+    """Functionality: construct the unique pair table and audit raw duplicates.
+    Inputs: source CSV DataFrames. Outputs: merged pair table and duplicate audit.
+    Logic: retain only consistent labels for the same task/pair; outer-join tasks to preserve NaN masks.
+    Constraints: conflicting or nonbinary labels raise an error; ignore source scores; never fill missing
+    qualification labels with zero."""
     tables, audit = [], {}
     for task, names in (("pref", ("train.csv", "val.csv", "test.csv")),
                         ("qual", ("qual_train.csv", "qual_test.csv"))):
@@ -193,9 +203,10 @@ def consolidate_labels(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, d
 
 
 def split_jobs(job_ids: list[str]) -> dict[str, str]:
-    """功能：固定冷岗位划分；输入岗位 ID；输出岗位到 split 映射。
-    逻辑：排序后使用独立 seed 置换；约束：要求恰好100个不同岗位，比例固定70/15/15。
-    """
+    """Functionality: assign a fixed cold-job split.
+    Inputs: job IDs. Outputs: mapping from job IDs to split names.
+    Logic: sort IDs, then apply an independent seeded permutation.
+    Constraints: require exactly 100 distinct jobs and fixed 70/15/15 proportions."""
     ids = sorted(job_ids)
     if len(ids) != 100 or len(set(ids)) != 100:
         raise ValueError("Expected exactly 100 distinct jobs.")
@@ -205,9 +216,10 @@ def split_jobs(job_ids: list[str]) -> dict[str, str]:
 
 
 def parse_list(value: str) -> list[str]:
-    """功能：解析源数据列表；输入 Python 列表文本；输出字符串列表。
-    逻辑：literal_eval 后检查类型；约束：格式错误直接抛出，不隐式猜测分隔符。
-    """
+    """Functionality: parse one source-data list value.
+    Inputs: Python list text. Outputs: list of strings.
+    Logic: use literal_eval and validate the parsed type.
+    Constraints: malformed values raise an error; do not guess alternate separators."""
     parsed = ast.literal_eval(value)
     if not isinstance(parsed, list) or not all(isinstance(item, str) for item in parsed):
         raise ValueError("Expected a list of strings in profile.")
@@ -215,10 +227,12 @@ def parse_list(value: str) -> list[str]:
 
 
 def profile_texts(users: pd.DataFrame, jobs: pd.DataFrame) -> tuple[list[str], list[str]]:
-    """功能：形成文本输入；输入完整档案表；输出候选文本/岗位查询文本。
-    逻辑：技能/兴趣/教育/经验在前、合成描述在后；岗位使用固定资格检索指令。
-    约束：不输入 ID、匹配标签、源 score 或虚构面试证据；后续按 token 上限截断。
-    """
+    """Functionality: construct model text for candidate profiles and job queries.
+    Inputs: complete profile tables. Outputs: candidate texts and job-query texts.
+    Logic: place skills/interests/education/experience first and synthetic descriptions afterward; use a
+    fixed qualification-retrieval instruction for jobs.
+    Constraints: exclude IDs, match labels, source scores, and fictional interview evidence; later truncate
+    to the fixed token limit."""
     candidate_texts = [
         f"Skills: {', '.join(parse_list(row.skills))}. Interests: {', '.join(parse_list(row.interests))}. "
         f"Education: {row.academic_level}, {row.masters_major}, {row.undergrad_major}. "
@@ -236,10 +250,12 @@ def profile_texts(users: pd.DataFrame, jobs: pd.DataFrame) -> tuple[list[str], l
 
 
 def structured_features(pairs: pd.DataFrame, users: pd.DataFrame, jobs: pd.DataFrame) -> np.ndarray:
-    """功能：计算11项显式匹配特征；输入配对和档案；输出 float32 矩阵。
-    逻辑：技能覆盖、偏好/专业/模式匹配及数值余量；约束：资格标签可能由类似规则生成，
-    因而本基线仅度量合成任务可学习性。没有人口属性和不存在的面试分。
-    """
+    """Functionality: calculate eleven explicit match features.
+    Inputs: pair table and profile tables. Outputs: float32 feature matrix.
+    Logic: compute skill coverage, preference/major/work-mode matches, and numeric margins.
+    Constraints: qualification labels may be generated from similar rules, so this baseline measures
+    learnability on synthetic tasks only. It contains no demographic attributes or nonexistent interview
+    scores."""
     user_map = users.set_index("student_id").to_dict("index")
     job_map = jobs.set_index("job_id").to_dict("index")
     levels = {"UG1": 1, "UG2": 2, "UG3": 3, "UG4": 4, "MS1": 5, "MS2": 6,
@@ -270,10 +286,11 @@ def structured_features(pairs: pd.DataFrame, users: pd.DataFrame, jobs: pd.DataF
 
 
 def prepare_data(frames: dict[str, pd.DataFrame], output: Path) -> tuple:
-    """功能：完成实体映射与划分审计；输入源表/输出路径；输出全部训练准备对象。
-    逻辑：合并配对、岗位隔离、验证每任务每划分均有正负例；约束：候选人允许跨划分，
-    所以这是冷岗位而非冷候选人实验；候选池仅包含源数据明确标注的配对。
-    """
+    """Functionality: map entities and audit the split.
+    Inputs: source tables and output path. Outputs: all prepared training objects.
+    Logic: merge pairs, split by job, and verify that each task/split has positive and negative labels.
+    Constraints: candidates may cross splits, so this is a cold-job—not cold-candidate—study. Candidate
+    pools contain only source pairs with explicit labels."""
     users = frames["Final_users.csv"].sort_values("student_id").reset_index(drop=True)
     jobs = frames["Final_items.csv"].sort_values("job_id").reset_index(drop=True)
     if users.student_id.duplicated().any() or jobs.job_id.duplicated().any():
@@ -304,10 +321,11 @@ def prepare_data(frames: dict[str, pd.DataFrame], output: Path) -> tuple:
 
 
 def ranking_metrics(frame: pd.DataFrame, scores: np.ndarray, task: str) -> dict:
-    """功能：计算明确候选池的宏平均排名；输入已观察标签表/分数/task；输出指标字典。
-    逻辑：pref 按候选人分组，qual 按岗位分组；无正例组不计均值并单独报告；同分按稳定
-    输入顺序打破。约束：不是全库检索；nDCG/Recall 的分母只来自已标注候选池。
-    """
+    """Functionality: compute macro-averaged ranking metrics on explicitly labeled candidate pools.
+    Inputs: observed-label rows, scores, and task. Outputs: metrics dictionary.
+    Logic: group preference rows by candidate and qualification rows by job; exclude groups without
+    positives from the mean and report them separately; break ties by stable input order.
+    Constraints: this is not full-corpus retrieval; nDCG/Recall denominators use only labeled candidates."""
     scored = frame.assign(pred=np.asarray(scores))
     group_column = "user" if task == "pref" else "item"
     label_column = "label_" + task
@@ -336,9 +354,10 @@ def ranking_metrics(frame: pd.DataFrame, scores: np.ndarray, task: str) -> dict:
 
 
 def evaluate_scores(pairs: pd.DataFrame, scores: np.ndarray, split: str) -> dict:
-    """功能：按任务和数据划分评测；输入配对表、N×2分数、split；输出两任务指标。
-    逻辑：只选显式标签；约束：sigmoid/排序分数不被当作已校准业务概率。
-    """
+    """Functionality: evaluate both tasks on one data split.
+    Inputs: pair table, N-by-2 scores, and split name. Outputs: per-task metrics.
+    Logic: use explicit labels only.
+    Constraints: sigmoid/ranking scores are not calibrated business probabilities."""
     result = {}
     for column, task in enumerate(("pref", "qual")):
         selected = pairs.split.eq(split) & pairs["label_" + task].notna()
@@ -353,10 +372,11 @@ def evaluate_scores(pairs: pd.DataFrame, scores: np.ndarray, split: str) -> dict
 
 
 def lexical_baseline(pairs: pd.DataFrame, texts: tuple, output: Path) -> np.ndarray:
-    """功能：计算 TF-IDF 配对余弦；输入配对/文本/目录；输出N×2共享语义分数。
-    逻辑：只在训练配对涉及的实体文本上拟合词表，验证测试仅 transform；约束：此分数
-    没有学习双边意愿。记录词表规模，不序列化含档案词汇的模型。
-    """
+    """Functionality: calculate TF-IDF pairwise cosine scores.
+    Inputs: pairs, text representations, and output directory. Outputs: shared semantic scores for N pairs.
+    Logic: fit vocabulary only on entities appearing in training pairs; transform validation/test only.
+    Constraints: these scores do not learn bilateral preference; record vocabulary size without serializing
+    the profile vocabulary."""
     candidate_texts, job_texts = texts
     train = pairs.loc[pairs.split.eq("train")]
     corpus = [candidate_texts[i] for i in sorted(train.u_idx.unique())]
@@ -372,10 +392,11 @@ def lexical_baseline(pairs: pd.DataFrame, texts: tuple, output: Path) -> np.ndar
 
 
 def encode_profiles(texts: tuple, output: Path) -> tuple[np.ndarray, np.ndarray]:
-    """功能：生成冻结 Qwen 表示；输入候选/岗位文本与目录；输出两侧归一化向量。
-    逻辑：固定修订、左 padding、最后有效 token 池化；FP16/SDPA/cuda:0。
-    约束：固定384 tokens，不因内存错误调整；仅保存向量和截断统计，不输出档案正文。
-    """
+    """Functionality: produce frozen Qwen representations.
+    Inputs: candidate/job text and output directory. Outputs: normalized embeddings for both sides.
+    Logic: use the fixed revision, left padding, last-valid-token pooling, FP16, SDPA, and cuda:0.
+    Constraints: retain the 384-token limit and fail rather than changing it after memory errors; save only
+    embeddings and truncation statistics, never profile text."""
     from transformers import AutoModel, AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(CONFIG["embedding_model"],
@@ -417,9 +438,11 @@ def encode_profiles(texts: tuple, output: Path) -> tuple[np.ndarray, np.ndarray]
 
 def build_pair_features(pairs: pd.DataFrame, embeddings: tuple, structured: np.ndarray,
                         output: Path) -> tuple[np.ndarray, np.ndarray]:
-    """功能：合并冻结向量和结构化特征；输入配对/向量/特征/目录；输出网络输入/余弦。
-    逻辑：abs(u-v)、逐维乘积、训练侧标准化的结构化特征；约束：标准化不能使用验证测试。
-    """
+    """Functionality: combine frozen embeddings and structured pair features.
+    Inputs: pair table, embeddings, features, and output directory. Outputs: network inputs and cosine scores.
+    Logic: concatenate absolute embedding differences, elementwise products, and training-side
+    standardized structured features.
+    Constraints: fit standardization on training rows only."""
     u, j = embeddings[0][pairs.u_idx], embeddings[1][pairs.j_idx]
     scaler = StandardScaler().fit(structured[pairs.split.eq("train")])
     features = np.concatenate([np.abs(u - j), u * j, scaler.transform(structured)], axis=1).astype(np.float32)
@@ -430,14 +453,16 @@ def build_pair_features(pairs: pd.DataFrame, embeddings: tuple, structured: np.n
 
 
 class DualHeadModel(torch.nn.Module):
-    """功能：偏好与资格共享表示网络；逻辑：MLP trunk 后分别线性输出。
-    约束：两头独立标签掩码；实例状态 trunk/heads 只含训练权重，不含实体 ID。
-    """
+    """Functionality: define the shared-representation preference/qualification network.
+    Logic: use an MLP trunk followed by one linear output per task.
+    Constraints: the heads use independent observed-label masks; instance state contains trained weights,
+    not entity IDs."""
 
     def __init__(self, feature_size: int):
-        """功能：初始化网络；输入特征维度；输出新实例。
-        逻辑：固定128/32隐藏层和dropout；约束：网络参数与 CONFIG 一致。
-        """
+        """Functionality: initialize the network.
+        Inputs: feature dimension. Outputs: a new model instance.
+        Logic: create fixed 128- and 32-unit hidden layers with dropout.
+        Constraints: layer parameters must match CONFIG."""
         super().__init__()
         first, second = CONFIG["hidden_sizes"]
         self.trunk = torch.nn.Sequential(torch.nn.Linear(feature_size, first), torch.nn.ReLU(),
@@ -445,18 +470,21 @@ class DualHeadModel(torch.nn.Module):
         self.heads = torch.nn.ModuleList([torch.nn.Linear(second, 1), torch.nn.Linear(second, 1)])
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
-        """功能：输出偏好/资格 logits；输入 B×D；输出 B×2。
-        逻辑：共享 trunk 后拼接两个线性头；约束：推理调用方负责 eval 和 sigmoid。
-        """
+        """Functionality: produce preference and qualification logits.
+        Inputs: B-by-D feature tensor. Outputs: B-by-2 logits.
+        Logic: apply the shared trunk and concatenate the two linear heads.
+        Constraints: the inference caller is responsible for eval mode and sigmoid conversion."""
         hidden = self.trunk(features)
         return torch.cat([head(hidden) for head in self.heads], dim=1)
 
 
 def train_dual_head(pairs: pd.DataFrame, features: np.ndarray, output: Path) -> np.ndarray:
-    """功能：训练双头模型；输入配对/特征/目录；输出所有配对两头分数。
-    逻辑：缺失标签通过 mask 排除，训练侧正类权重，12轮中按验证双任务平均AP选最佳；
-    约束：不查测试选择模型，不早停或自动调整参数；测试结果只在训练结束后计算。
-    """
+    """Functionality: train the dual-head model and score every pair.
+    Inputs: pair table, features, and output directory. Outputs: N-by-2 scores.
+    Logic: mask missing labels, use training-side positive-class weights, and select the best of 12 epochs
+    by mean validation AP across both tasks.
+    Constraints: never select from test results; no early stopping or automatic parameter changes; compute
+    test metrics only after training is complete."""
     model = DualHeadModel(features.shape[1]).to("cuda:0")
     x = torch.from_numpy(features).to("cuda:0")
     targets = pairs[["label_pref", "label_qual"]].to_numpy(dtype=np.float32)
@@ -516,9 +544,10 @@ def train_dual_head(pairs: pd.DataFrame, features: np.ndarray, output: Path) -> 
 
 
 def structured_baseline(pairs: pd.DataFrame, features: np.ndarray, output: Path) -> np.ndarray:
-    """功能：结构化逻辑回归基线；输入配对/原始11维/目录；输出N×2分数。
-    逻辑：各头只在各自训练标签上拟合标准化和逻辑回归；约束：无任务标签传播。
-    """
+    """Functionality: fit structured logistic-regression baselines.
+    Inputs: pairs, raw 11-dimensional features, and output directory. Outputs: N-by-2 scores.
+    Logic: fit scaling and logistic regression for each task using only that task's training labels.
+    Constraints: no label propagation between tasks."""
     predictions, records = [], {}
     for task in ("pref", "qual"):
         observed = pairs.split.eq("train") & pairs["label_" + task].notna()
@@ -537,10 +566,12 @@ def structured_baseline(pairs: pd.DataFrame, features: np.ndarray, output: Path)
 
 
 def rerank_qualification(pairs: pd.DataFrame, texts: tuple, cosine: np.ndarray, output: Path) -> dict:
-    """功能：资格方向两阶段精排；输入配对/文本/余弦/目录；输出固定测试候选池的指标。
-    逻辑：各岗位语义 top10，Qwen yes/no logits 重排前缀，尾部保持原次序。
-    约束：固定 query/doc 各160/320token；不是全库召回；不报告伪概率AUC，不调整候选池。
-    """
+    """Functionality: run two-stage reranking for qualification.
+    Inputs: pairs, text, cosine scores, and output directory. Outputs: metrics on the fixed test candidate pool.
+    Logic: retrieve the top 10 by semantic score per job, rerank the prefix with Qwen yes/no logits, and
+    preserve the original order for the tail.
+    Constraints: query/document limits are fixed at 160/320 tokens; this is not full-corpus retrieval; do
+    not report a pseudo-probability AUC or modify the candidate pool."""
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     frame = pairs.loc[pairs.split.eq("test") & pairs.label_qual.notna()].copy()
@@ -598,9 +629,10 @@ def rerank_qualification(pairs: pd.DataFrame, texts: tuple, cosine: np.ndarray, 
 
 
 def write_report(results: dict, output: Path) -> None:
-    """功能：输出可读报告；输入指标/目录；输出无，保存 Markdown。
-    逻辑：分别展示任务及候选池指标；约束：不把合成标签结果写成真实招聘或面试增益。
-    """
+    """Functionality: write the readable experiment report.
+    Inputs: metric results and output directory. Outputs: Markdown report.
+    Logic: report each task and candidate-pool metric separately.
+    Constraints: do not describe synthetic-label results as real hiring or interview gains."""
     lines = ["# JobRec cold-job feasibility v1", "", "Completed on Kaggle; frozen Qwen embeddings + masked dual-head MLP.",
              "", "| Model | Task | AP | AUC | NDCG@5 | Recall@5 | Queries | Median labeled pool |",
              "|---|---|---:|---:|---:|---:|---:|---:|"]
@@ -622,10 +654,11 @@ def write_report(results: dict, output: Path) -> None:
 
 
 def main() -> None:
-    """功能：执行完整实验；输入 Kaggle GPU/网络环境；输出 /kaggle/working/jobrec_v1。
-    逻辑：各阶段及时保存审计，最终保存模型/预测/指标；约束：任何异常记录当前阶段并
-    重新抛出，不自动重跑、降级或改参数。故障输出保留已完成阶段的证据。
-    """
+    """Functionality: execute the full experiment.
+    Inputs: Kaggle GPU/network environment. Outputs: artifacts under `/kaggle/working/jobrec_v1`.
+    Logic: save audit data after each stage, then save models, predictions, and metrics.
+    Constraints: record the failing stage and re-raise any exception; do not rerun, degrade, or change
+    parameters automatically. Preserve evidence from completed stages."""
     output = Path("/kaggle/working/jobrec_v1")
     output.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",

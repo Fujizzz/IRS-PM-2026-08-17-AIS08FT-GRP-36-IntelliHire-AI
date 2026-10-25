@@ -1,20 +1,20 @@
 """Responsibilities: combine approved supplemental data with V1 training rows without leakage.
 
-Implementation: retain only V1 train rows, preserve all V2 groups/splits, prefix provenance IDs,
-check Unicode exact uniqueness, and copy the new challenge/known regression into private staging.
+Implementation: retain only V1 training rows, preserve all V2 groups and splits, prefix provenance IDs,
+check exact Unicode uniqueness, and copy the new challenge and known regression into private staging.
 Related Modules: annotate produces blind teacher labels; train_v2 reads the resulting fixed files.
 
-目录：
-- read_jsonl：Read every source record without label or text modification.
-- checksum：Hash persisted bytes for input provenance.
-- main：Assemble V2 data, enforce source/split contracts and write reproducible staging metadata.
+Declaration Index:
+- read_jsonl: read every source record without changing labels or text.
+- checksum: hash persisted bytes for input provenance.
+- main: assemble V2 data, enforce source/split contracts, and write reproducible staging metadata.
 
-关键变量：
-（无模块级变量。）
+Variable Index:
+None
 
-Constraints: old validation/test rows are never added to training; no resampling, implicit repairs,
-relabeling, parameter changes or real-user records. Sources and original IDs remain recoverable.
-"""
+Constraints:
+Old validation/test rows are never added to training; there is no resampling, implicit repair,
+relabeling, parameter change, or real-user record. Source data and original IDs remain recoverable."""
 
 import argparse
 import hashlib

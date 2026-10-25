@@ -1,10 +1,21 @@
-"""职责：评估v4固定预测并保存查询级证据、区间和工程候选门槛。
-实现：沿用v1主指标；显式记录并列与正例排名；复用v2加权AP进行配对查询bootstrap。
-关联：jobrec_missing定义协议；experiment和verify调用analyze，不在此训练或选择模型。
-目录：query_details、summarize_strata、analyze。
-变量索引：LOGGER为阶段日志；CONTRASTS为预登记模型差值；实例状态无。
-约束：同任务跨模型/场景共用重采样；全负查询只从排名均值排除；诊断不证明公平性。
-"""
+"""Responsibilities: evaluate fixed v4 predictions and save query-level evidence, intervals, and
+engineering candidate-gate results.
+Implementation: reuse v1 primary metrics, record ties and positive ranks explicitly, and reuse v2's
+weighted AP for paired query bootstrap intervals.
+Related Modules: jobrec_missing defines the protocol; experiment calls this evaluator after training.
+
+Declaration Index:
+- query_details: compute stable query rankings and positive-item positions.
+- summarize_strata: summarize positive-pair changes by available-feature count.
+- analyze: evaluate all fixed model/scenario predictions and write reports.
+
+Variable Index:
+- LOGGER: stage-level evaluation logging.
+- CONTRASTS: preregistered model-score differences.
+- Instance state: None.
+
+Constraints: share bootstrap draws across models/scenarios within each task; exclude all-negative
+queries only from ranking means; diagnostics do not establish fairness."""
 
 import logging
 from pathlib import Path
@@ -22,10 +33,12 @@ CONTRASTS = [("B", "A"), ("C", "B"), ("D", "B")] + [(m, "H") for m in "ABCD"]
 
 def query_details(frame: pd.DataFrame, scores: np.ndarray, task: str,
                   available: np.ndarray) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """功能：记录每查询排名及正例位置；输入仅该任务已观察行/分数/任务/资料可用数。
-    输出查询表和正例表；逻辑：稳定降序保持历史并列口径，k截断与历史一致。
-    约束：记录并列率；全负查询指标为NaN保留在表中，排序位置为1起始且依赖同分行序。
-    """
+    """Functionality: record per-query rankings and positive-item positions.
+    Inputs: observed rows for one task, their scores, task name, and available-feature counts.
+    Outputs: query summary table and positive-pair table.
+    Logic: use stable descending sort to preserve the historical tie rule and apply the same top-k limits.
+    Constraints: report tie rates; retain all-negative queries with NaN ranking metrics; ranks start at one
+    and depend on input order for tied scores."""
     frame = frame.reset_index(drop=True)
     rows, positives = [], []
     for query, indices in frame.groupby("user" if task == "pref" else "item", sort=True).indices.items():
@@ -53,9 +66,12 @@ def query_details(frame: pd.DataFrame, scores: np.ndarray, task: str,
 
 
 def summarize_strata(positive: pd.DataFrame, clean: pd.DataFrame) -> list[dict]:
-    """功能：对同一正例比较遮蔽前后排名；输入某场景与clean的正例表；输出按可用数分层摘要。
-    逻辑：按user/item一一合并后汇总人数/正例数/排名变化/命中变化；约束：候选池不删减。
-    """
+    """Functionality: compare masked-profile ranks with the clean reference for the same positive pairs.
+    Inputs: one scenario's positive table and the clean positive table.
+    Outputs: summaries grouped by available-feature count.
+    Logic: perform a one-to-one user/item join, then summarize users, positive pairs, rank changes, and
+    hit changes.
+    Constraints: do not remove candidate pairs; incomplete or duplicate joins raise an error."""
     joined = positive.merge(clean[["user", "item", "rank", "hit5"]], on=["user", "item"],
                             suffixes=("", "_clean"), validate="one_to_one")
     output = []
@@ -68,10 +84,12 @@ def summarize_strata(positive: pd.DataFrame, clean: pd.DataFrame) -> list[dict]:
 
 
 def analyze(pairs: pd.DataFrame, predictions: dict, feature_arrays: dict, output: Path) -> dict:
-    """功能：完整分析下载或远端固定预测；输入测试配对/场景模型预测/场景特征/输出目录。
-    输出metrics字典并保存查询证据/区间/门槛；逻辑：逐场景主指标，r0共享2000次查询抽样。
-    约束：无训练或选模；预测须有限；r1-r4仅敏感性分析；工程门槛不等于上线许可。
-    """
+    """Functionality: analyze fixed predictions downloaded from Kaggle or produced by the experiment.
+    Inputs: test pairs, model/scenario predictions, scenario feature arrays, and output directory.
+    Outputs: metrics dictionary plus query evidence, bootstrap intervals, and candidate-gate reports.
+    Logic: compute primary metrics per scenario and use shared 2,000-draw bootstrap samples for repeat 0.
+    Constraints: no training or model selection occurs here; predictions must be finite; repeats 1–4 are
+    sensitivity analysis only; an engineering gate is not release approval."""
     output.mkdir(parents=True, exist_ok=True)
     metrics, queries, positive_tables, all_query_rows, all_positive_rows = {}, {}, {}, [], []
     for scene, _ in feature_arrays.items():

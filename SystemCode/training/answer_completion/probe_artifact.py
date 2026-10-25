@@ -1,19 +1,19 @@
 """Responsibilities: verify an approved bundle with the actual local serving implementation.
 
-Implementation: load checksum-bound gate, score fixed fictional holdouts, measure CPU latency and
-compare single-tail/multi-row requests. Optionally check Qwen routing on predeclared smoke texts.
+Implementation: load the checksum-bound gate, score fixed fictional holdouts, measure CPU latency,
+and compare single-tail with multi-row requests. Optionally check Qwen routing on predeclared smoke text.
 Related Modules: completion_gate is the real inference boundary; answer_completion owns Qwen.
 
-目录：
-- main：Load approved artifact, verify scoring consistency, save local CPU and optional API probe.
-- verify_qwen_cases：Record real two-stage decisions/errors without retries or threshold changes.
+Declaration Index:
+- main: load the approved artifact, verify scoring consistency, and save local CPU and optional API probes.
+- verify_qwen_cases: record real two-stage decisions/errors without retries or threshold changes.
 
-关键变量：
-- SMOKE_CASES：Fixed fictitious routing checks; not independent gold or threshold calibration data.
+Variable Index:
+- SMOKE_CASES: fixed fictional routing checks; not independent gold or threshold-calibration data.
 
-Constraints: no threshold/model mutation, private .env edit or production activation. This is an
-integration/latency probe on this machine, not a new accuracy benchmark or real microphone test.
-"""
+Constraints:
+No threshold/model mutation, private .env edits, or production activation. This is an integration and
+latency probe on this machine, not a new accuracy benchmark or real-microphone test."""
 
 import argparse
 import asyncio
@@ -26,9 +26,9 @@ import numpy as np
 from dotenv import load_dotenv
 
 SMOKE_CASES = (
-    ("zh-end", "我采用队列隔离任务，这道题我能说的已经都说了，可以问下一题了。", True),
-    ("zh-task", "项目已经全部完成了，我接着解释一下队列隔离任务的原理。", False),
-    ("zh-quote", "按钮显示回答完毕，不过我还要解释一下为什么按下去会丢数据。", False),
+    ("zh-end", "I use queue isolation for tasks. That is all I have to say about this question; we can move to the next one.", True),
+    ("zh-task", "The project is complete. I will continue explaining the principles of queue isolation.", False),
+    ("zh-quote", "The button displays 'Answer complete,' but I still need to explain why pressing it would lose data.", False),
     ("en-end", "I used a queue to isolate tasks. That is all I have to say for this question.",
      True),
     ("en-task", "The project is complete. I will explain how the queue isolates tasks next.",

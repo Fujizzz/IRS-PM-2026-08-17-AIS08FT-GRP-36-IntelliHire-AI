@@ -8,8 +8,8 @@ Declaration Index:
 - main: verify source identity and generate the Kaggle notebook and metadata.
 
 Variable Index:
-- SOURCES: ordered module filenames and immutable SHA256 values from the submitted Kaggle run.
-- EXPERIMENT_SHA256: immutable SHA256 for the v4 training entry point.
+- SOURCES: ordered module filenames and SHA256 values for the current translated source copies.
+- EXPERIMENT_SHA256: SHA256 for the current translated v4 training entry point.
 - KERNEL_METADATA: private Kaggle kernel identity, resources, and parent kernel inputs.
 """
 
@@ -18,12 +18,12 @@ import json
 from pathlib import Path
 
 SOURCES = [
-    ("jobrec_v1", "jobrec_v1.py", "300883ef6e12e1b7ac3697eedecdb20c9e9e121113d9d461477bf2b4e792305e"),
-    ("jobrec_v2", "jobrec_v2.py", "d27b7bdb985468bf61d8ff84ce0b2fb888d73ab9d239fcc5b5dc8dce7c576991"),
-    ("jobrec_missing", "jobrec_missing.py", "227b82a6db8b7072fc2938024d1282fe7af7953659e9e375b9460fc88c4967d3"),
-    ("jobrec_missing_eval", "jobrec_missing_eval.py", "c0bd8081ca731b832e1315640dbaa4ea64a5eeb6f52b02a344c1a98714f8f02b"),
+    ("jobrec_v1", "jobrec_v1.py", "568b40753db4daa87b3f96a645a928a9d9e4716fb2fd09b9dbad2696372193fc"),
+    ("jobrec_v2", "jobrec_v2.py", "b91751ee1ac3383a2ac7005b4c88f76d6cd94d1fae6e15eee4d3e16f4c6fa44b"),
+    ("jobrec_missing", "jobrec_missing.py", "6ce7a78ab3198f56adb5534a0b543bb8a4a14092358a87649dbf8385c67ff8a6"),
+    ("jobrec_missing_eval", "jobrec_missing_eval.py", "3d6fcb47860900d316387c15c147aea1e01e1f0b4b0e77a586a3b3acb822f09a"),
 ]
-EXPERIMENT_SHA256 = "be356b627c96c759b7b075281dd129ca95d0f82e0712e7f8df6661cd86d9d344"
+EXPERIMENT_SHA256 = "920e09412493080a9b7a4be2d417e6806611d4c63ff9b3aa46862ff4dce762d0"
 KERNEL_METADATA = {
     "id": "heropig/irs-jobrec-missing-v4",
     "title": "IRS JobRec Missing V4",

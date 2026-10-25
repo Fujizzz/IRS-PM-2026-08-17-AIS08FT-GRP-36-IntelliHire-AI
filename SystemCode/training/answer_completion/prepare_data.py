@@ -1,26 +1,25 @@
-"""Responsibilities: reproducible synthetic, bilingual semantic completion data generation.
+"""Responsibilities: generate reproducible synthetic bilingual data for semantic answer-completion detection.
 
-Implementation: preassign source groups to splits, generate contrastive variants of fictitious
-interview answers via Qwen Plus, validate structure and exact deduplication, then save provenance.
+Implementation: preassign source groups to splits, generate contrastive variants of fictional interview
+answers with Qwen Plus, validate structure and exact deduplication, then save provenance.
 Related Modules: experiment.json fixes conditions before training; train.py consumes JSONL only.
 
-目录：
-- generate_group：Generate one shared-context semantic family without lexical label assignment.
-- parse_group：Check saved response categories and attach unchanged group/label provenance.
-- apply_corrections：Apply explicit checksum-bound semantic rewrites without changing labels/splits.
-- write_jsonl：Persist UTF-8 records without credentials or provider response envelopes.
-- main：Resolve explicit output/config, generate bounded concurrent groups, save dataset metadata.
+Declaration Index:
+- generate_group: generate one shared-context semantic family without assigning labels from cue words.
+- parse_group: validate saved response categories and attach unchanged group/label provenance.
+- apply_corrections: apply explicit checksum-bound semantic rewrites without changing labels or splits.
+- write_jsonl: persist UTF-8 records without credentials or provider response envelopes.
+- main: resolve explicit output/config, generate bounded concurrent groups, and save dataset metadata.
 
-关键变量：
-- CATEGORIES：Semantic generation conditions and target labels; never runtime cue rules.
-- TOPICS：Fictitious interview topic pool shared across languages.
-- SYSTEM_PROMPT：Generation contract requiring same-context positives and hard negatives.
+Variable Index:
+- CATEGORIES: semantic generation conditions and target labels; never runtime cue rules.
+- TOPICS: fictional interview topic pool shared across languages.
+- SYSTEM_PROMPT: generation contract requiring same-context positives and hard negatives.
 
-约束：
+Constraints:
 Labels are scenario-conditioned synthetic labels, not independent human ground truth. A failed
-request/invalid response aborts without retries. Split and random seed are fixed before generation;
-Source groups never cross splits. Real candidate data, public tests and secrets are not uploaded.
-"""
+request or invalid response aborts without retries. Split and random seed are fixed before generation;
+source groups never cross splits. Real candidate data, public tests, and secrets are not uploaded."""
 
 import argparse
 import asyncio

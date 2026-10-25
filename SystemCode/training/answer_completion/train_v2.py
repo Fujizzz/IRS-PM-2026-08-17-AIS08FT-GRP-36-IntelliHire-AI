@@ -1,36 +1,35 @@
-"""Responsibilities: one approved Kaggle GPU encoder-finetuning experiment and CPU release audit.
+"""Responsibilities: run one approved Kaggle GPU encoder-finetuning experiment and CPU release audit.
 
 Implementation: fine-tune pinned multilingual MiniLM and a linear binary head, select the epoch by
 validation weighted BCE, export INT8 ONNX, calibrate on validation with single-tail serving inputs,
-then evaluate new test/challenge once. V1 challenge is separately reported as known regression.
-Related Modules: train supplies unchanged metric/threshold helpers; completion_gate supplies the
-exact offline serving transform; experiment-v2.json fixes all experimental conditions in advance.
+then evaluate the new test/challenge once. Report the V1 challenge separately as a known regression.
+Related Modules: train supplies unchanged metric/threshold helpers; completion_gate supplies the exact
+offline serving transform; experiment-v2.json fixes all experimental conditions in advance.
 
-目录：
-- install_dependencies：Install exact experiment library pins, without modifying application env.
-- read_records：Load UTF-8 JSONL with no relabeling, omission or text transformation.
-- validate_data：Reject duplicates, source leakage, invalid labels and challenge overlap.
-- tensor_batch：Apply serving tokenizer/tail limits, then make CUDA tensors for training.
-- fit_network：Fine-tune five epochs; choose minimum validation loss without reading held-out text.
-- fit_network.Network：Own contextual encoder and linear head with masked mean/L2 pooling.
-- fit_network.Network.__init__：Load immutable pretrained revision and initialize learned head.
-- fit_network.Network.forward：Return own-answer-end logit from attended contextual tokens.
-- export_encoder：Export fixed batch-one encoder and quantize using declared INT8 parameters.
-- export_encoder.HiddenStates：Expose the selected encoder's hidden states to ONNX.
-- export_encoder.HiddenStates.__init__：Register the selected encoder as owned export state.
-- export_encoder.HiddenStates.forward：Return hidden states from three token tensor inputs.
-- evaluate_export：Use actual serving CPU features, calibrate validation, evaluate once and package.
-- run：Check CUDA/data contracts and orchestrate the single experiment.
-- main：Find unique V2 Kaggle mount or explicit input; install pins and run once.
+Declaration Index:
+- install_dependencies: install exact experiment library pins without modifying the application environment.
+- read_records: load UTF-8 JSONL without relabeling, omission, or text transformation.
+- validate_data: reject duplicates, source leakage, invalid labels, and challenge overlap.
+- tensor_batch: apply serving tokenizer/tail limits, then make CUDA tensors for training.
+- fit_network: fine-tune five epochs; choose minimum validation loss without reading held-out text.
+- fit_network.Network: own the contextual encoder and linear head with masked mean/L2 pooling.
+- fit_network.Network.__init__: load the immutable pretrained revision and initialize the learned head.
+- fit_network.Network.forward: return an own-answer-ending logit from attended contextual tokens.
+- export_encoder: export a fixed batch-one encoder and quantize it with declared INT8 parameters.
+- export_encoder.HiddenStates: expose selected encoder hidden states to ONNX.
+- export_encoder.HiddenStates.__init__: register the selected encoder as owned export state.
+- export_encoder.HiddenStates.forward: return hidden states from three token-tensor inputs.
+- evaluate_export: use actual serving CPU features, calibrate validation, evaluate once, and package.
+- run: check CUDA/data contracts and orchestrate the single experiment.
+- main: find the unique V2 Kaggle mount or explicit input, install pins, and run once.
 
-关键变量：
-（无模块级变量。）
+Variable Index:
+None
 
-Constraints: CUDA is required; explicitly approved standard AMP overflow handling skips an update
-and lowers loss scale, with logged counts. No CPU fallback, retries, held-out threshold tuning,
-or acceptance relaxation. An unapproved bundle is preserved and exits nonzero. Synthetic teacher
-labels are not independent human gold; this experiment cannot establish microphone accuracy.
-"""
+Constraints: CUDA is required. The explicitly approved standard AMP overflow handling skips an update
+and lowers the loss scale, with logged counts. There is no CPU fallback, retry, held-out threshold
+tuning, or acceptance relaxation. An unapproved bundle is preserved and exits nonzero. Synthetic
+teacher labels are not independent human gold; this experiment cannot establish microphone accuracy."""
 
 import argparse
 import importlib.metadata

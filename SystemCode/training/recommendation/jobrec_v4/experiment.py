@@ -1,10 +1,21 @@
-"""职责：执行已批准的v4缺失资料训练与历史基线核验。
-实现：固定父产物哈希，重算资料遮蔽特征，训练8个树模型，保存预测并统一分析。
-关联：jobrec_v1/v2复用历史协议；jobrec_missing定义缺失语义；jobrec_missing_eval分析输出。
-目录：verify_history、prepare_scenes、train_model、main。
-变量索引：LOGGER为无凭据阶段日志；其余实验参数由spec.PROTOCOL/RANKER_CONFIG提供。
-约束：不改变历史模型、划分、标签、树超参数；失败保存阶段且抛出，无重试或回退。
-"""
+"""Responsibilities: execute the approved v4 missing-profile training study and verify its historical baseline.
+Implementation: verify fixed parent-artifact hashes, rebuild masked-profile features, fit eight rankers,
+and save predictions for a unified analysis.
+Related Modules: jobrec_v1/jobrec_v2 provide frozen historical helpers; jobrec_missing defines missingness;
+jobrec_missing_eval analyzes outputs.
+
+Declaration Index:
+- verify_history: verify the identities of v3 rankers and recorded evaluation artifacts.
+- prepare_scenes: rebuild registered missing-profile scenes from hidden source fields.
+- train_model: fit one registered pair of preference/qualification rankers.
+- main: execute the staged data, training, and evaluation workflow.
+
+Variable Index:
+- LOGGER: stage-level logging without credentials or profile text; experiment settings come from
+  spec.PROTOCOL and spec.RANKER_CONFIG.
+
+Constraints: preserve historical models, splits, labels, and tree parameters; each failed stage is
+recorded and re-raised, with no retry or fallback."""
 
 import hashlib
 import importlib.metadata
@@ -29,9 +40,10 @@ LOGGER = logging.getLogger("jobrec_v4")
 
 
 def verify_history(folder: Path) -> None:
-    """功能：核验v3历史树与结果身份；输入父目录；输出无。
-    逻辑：逐文件SHA256比对冻结表；约束：任何不符即失败，不接受同名更新产物。
-    """
+    """Functionality: verify the identity of historical v3 rankers and result files.
+    Inputs: parent artifact directory. Outputs: none.
+    Logic: compare each file's SHA256 with the frozen protocol manifest.
+    Constraints: any mismatch raises an error; a newer file with the same name is not accepted."""
     for name, expected in spec.HISTORICAL.items():
         if hashlib.sha256((folder / name).read_bytes()).hexdigest() != expected:
             raise ValueError(f"v3 historical artifact changed: {name}")
@@ -40,10 +52,13 @@ def verify_history(folder: Path) -> None:
 
 def prepare_scenes(pairs: pd.DataFrame, users: pd.DataFrame, jobs: pd.DataFrame,
                    clean: np.ndarray, output: Path) -> dict:
-    """功能：冻结所有缺失场景；输入完整数据与参考特征/输出目录；输出场景到全配对特征映射。
-    逻辑：实体掩码→原始字段隐藏→特征重算，并保存实体ID、掩码和摘要；约束：clean须逐项相同。
-    训练场景命名空间独立；原始档案不写输出；保存的特征含NaN，不用NaN填补标签。
-    """
+    """Functionality: construct the fixed missing-profile scenarios.
+    Inputs: pair/user/job tables, the complete reference feature matrix, and the output directory.
+    Outputs: a mapping from scenario keys to feature matrices for all pairs.
+    Logic: mask entity fields before recomputing features, then save entity IDs, masks, and audit summaries.
+    Constraints: the clean reconstruction must match element by element; original profiles are not written
+    as scenario output; training masks use a separate namespace; missing feature values remain NaN and do
+    not fill missing labels."""
     data, masks, audits = {}, {}, {}
     settings = spec.scenarios() + [("training_mix", 0)]
     for scenario, repeat in settings:
@@ -73,10 +88,14 @@ def prepare_scenes(pairs: pd.DataFrame, users: pd.DataFrame, jobs: pd.DataFrame,
 
 
 def train_model(model_name: str, pairs: pd.DataFrame, data: dict, folder: Path) -> list:
-    """功能：训练一个预登记双向对照；输入模型名/配对/场景/模型目录；输出两个已裁剪Booster。
-    逻辑：A用完整、BCD用同一混合资料；按任务查询成组；三种验证AP等权选20轮网格。
-    约束：只用train拟合、validation选轮次；不复制配对；并列选更早；模型保存后重新加载。
-    """
+    """Functionality: fit one preregistered bidirectional comparison variant.
+    Inputs: variant name, pair table, scenario feature matrices, and model output directory.
+    Outputs: the two selected, reloaded LightGBM Boosters.
+    Logic: A uses complete profiles; B/C/D share the fixed mixed-profile training input. Group rows by
+    query for each task and select from the 20-to-200 tree grid using the equal mean AP over three
+    validation scenarios.
+    Constraints: fit on train only and select on validation only; do not duplicate pairs; resolve ties in
+    favor of the earlier iteration; save and reload the chosen model."""
     import lightgbm as lgb
 
     outputs, history = [], {}
@@ -112,10 +131,13 @@ def train_model(model_name: str, pairs: pd.DataFrame, data: dict, folder: Path) 
 
 
 def main() -> None:
-    """功能：运行完整v4；输入Kaggle父kernel、网络和已批准协议；输出jobrec_v4产物。
-    逻辑：核验→环境→数据→clean复现→缺失诊断→8次拟合→评测；每阶段日志及失败状态落盘。
-    约束：沿用历史环境引导；树模型仅CPU两线程，不声称使用GPU训练；不执行文本或面试模型。
-    """
+    """Functionality: run the complete v4 experiment.
+    Inputs: mounted Kaggle parent kernels, network access, and the approved fixed protocol.
+    Outputs: the `jobrec_v4` artifacts under `/kaggle/working`.
+    Logic: verify inputs, initialize the environment, reconstruct data and the clean baseline, diagnose
+    missingness, fit eight rankers, and evaluate; log each stage and persist failure status.
+    Constraints: retain the historical environment setup. Trees train on CPU with two threads; do not
+    claim GPU training. This study does not train text or interview models."""
     output = Path("/kaggle/working/jobrec_v4")
     output.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(level=logging.INFO, force=True, format="%(asctime)s %(levelname)s %(message)s",
