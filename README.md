@@ -13,6 +13,10 @@ Submission name: `IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI`.
 Official repository: [IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI](https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI).
 This repository follows the [IRS project submission template](https://github.com/IRS-PM/Workshop-Project-Submission-Template).
 
+**Deploy your own instance:** after installing Python 3.11+ and Docker with Compose 2.30+,
+run `python deploy.py local`, or `python3 deploy.py server --domain interview.example.com`.
+The first run guides model/voice configuration. See the [end-user deployment guide](DEPLOYMENT.md).
+
 ## SECTION 2 : EXECUTIVE SUMMARY / PAPER ABSTRACT
 
 IntelliHire AI supports interview preparation through resume-grounded questions, time-bounded
@@ -53,7 +57,10 @@ submission; they have not been inferred from commit authors or local account nam
 
 ## SECTION 5 : USER GUIDE
 
-Start with the [installation and user guide](ProjectReport/Installation-and-User-Guide.md).
+For step-by-step instructions with screenshots, read the
+[IntelliHire AI User Guide](ProjectReport/IntelliHire-AI-User-Guide-Annotated.docx).
+It covers account access, resume preparation, voice interviews, saved reviews and job matches.
+For installation and startup, use the [installation guide](ProjectReport/Installation-and-User-Guide.md).
 The detailed [development guide](SystemCode/README.md), [backend guide](SystemCode/backend/README.md),
 [RAG integration guide](SystemCode/rag/docs/TEAM_INTEGRATION.md) and
 [digital-human guide](SystemCode/docs/guides/DIGITAL_HUMAN_SETUP.md) describe their respective prerequisites.

@@ -1,5 +1,10 @@
 # Installation and user guide — IntelliHire AI
 
+For instructions on using the running system, see the illustrated
+[IntelliHire AI User Guide](IntelliHire-AI-User-Guide-Annotated.docx). It covers sign-in, resume
+management, interview preparation, automatic voice answers, saved reviews and job matches.
+The instructions below cover installation and startup.
+
 ## Directory convention
 
 The Git repository root contains the submission README, report/video directories and GitHub

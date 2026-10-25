@@ -1,5 +1,9 @@
 # 单机生产部署与维护
 
+从 GitHub 克隆后部署自己的本机或服务器实例，请使用仓库根目录的
+[`deploy.py` 一键部署入口](../../DEPLOYMENT.md)：`python deploy.py local` 或
+`python3 deploy.py server --domain 你的域名`。下文保留维护者现有服务器的发布与维护流程。
+
 ## 提交模板整理后的路径
 
 本目录位于 `SystemCode/deploy/`；开发命令以 `SystemCode/` 为运行根目录。
