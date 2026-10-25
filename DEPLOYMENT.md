@@ -6,7 +6,7 @@
 若只部署核心应用，可跳过体积较大的 UE Git LFS 资源下载（数字人文件保留为 LFS 指针）：
 
 ```bash
-git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-9-IntelliHire-AI.git intellihire
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 https://github.com/Fujizzz/IRS-PM-2026-08-17-AIS08FT-GRP-36-IntelliHire-AI.git intellihire
 cd intellihire
 ```
 
